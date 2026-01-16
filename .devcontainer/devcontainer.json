@@ -1,0 +1,25 @@
+{
+    "name": "gymbro",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+    "postCreateCommand": "npm install && npm install -g firebase-tools@latest",
+    "forwardPorts": [
+        5173,
+        4173
+    ],
+    "portsAttributes": {
+        "5173": {
+            "label": "Vite dev server",
+            "onAutoForward": "openBrowser"
+        },
+        "4173": {
+            "label": "Vite preview server"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "Firebase.firebase-tools"
+            ]
+        }
+    }
+}
