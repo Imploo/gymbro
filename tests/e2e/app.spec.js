@@ -40,16 +40,16 @@ test("exercise lifecycle and rest timer", async ({ page }) => {
   const setsBadge = page.locator(".badge").nth(1);
   const warmupText = page.getByText(/Warmup set/);
 
+  // Warmup is enabled by default, turn it off to check working weight
+  await expect(warmupText).toBeVisible();
+  await page.getByRole("button", { name: "Warmup" }).click();
+  await expect(warmupText).toBeHidden();
+
   await expect(weightBadge).toHaveText("20 kg");
   await page.getByRole("button", { name: "+2.5" }).click();
   await expect(weightBadge).toHaveText("22.5 kg");
   await page.getByRole("button", { name: "-2.5" }).click();
   await expect(weightBadge).toHaveText("20 kg");
-
-  if (await warmupText.isVisible()) {
-    await page.getByRole("button", { name: "Warmup" }).click();
-    await expect(warmupText).toBeHidden();
-  }
 
   await expect(setsBadge).toHaveText("0/5");
   await page.getByRole("button", { name: "Complete set" }).click();
