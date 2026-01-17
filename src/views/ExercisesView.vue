@@ -1,18 +1,18 @@
 <template>
   <div class="column">
-    <div v-if="exercises.friendRequests.length" class="card column">
+    <div v-if="social.friendRequests.length" class="card column">
       <strong>Friend requests</strong>
       <div
-        v-for="request in exercises.friendRequests"
+        v-for="request in social.friendRequests"
         :key="request.id"
         class="row partner-item"
       >
         <span>{{ request.requester.displayName || request.requester.email }}</span>
         <div class="row" style="gap: 8px;">
-          <button class="button" @click="exercises.acceptFriendRequest(request.id)">
+          <button class="button" @click="social.acceptFriendRequest(request.id)">
             Accept
           </button>
-          <button class="button secondary" @click="exercises.declineFriendRequest(request.id)">
+          <button class="button secondary" @click="social.declineFriendRequest(request.id)">
             Decline
           </button>
         </div>
@@ -50,13 +50,15 @@
 import { onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useExercisesStore } from "../stores/exercises";
+import { useSocialStore } from "../stores/social";
 
 const exercises = useExercisesStore();
+const social = useSocialStore();
 
 const isExerciseActive = (exercise) => Number(exercise.setsDone ?? 0) > 0;
 
 onMounted(async () => {
   exercises.subscribeUserExercises();
-  exercises.loadFriendships();
+  social.loadFriendships();
 });
 </script>
