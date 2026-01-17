@@ -1,0 +1,29 @@
+---
+description: Rules for processing bug and feature tickets in the /tickets folder
+globs: tickets/*.md
+---
+
+# Ticket Processing Rules
+
+These rules apply to the processing of bug and feature tickets located in the `/tickets` directory.
+
+## 1. Ticket Lifecycle & Management
+- **NEVER DELETE** a ticket file.
+- To complete a ticket, change its status to `Done` or `Completed`. do not remove the file.
+
+## 2. Ticket Structure Requirements
+Every ticket file must contain the following sections:
+- **Title**: A clear and concise summary of the issue or feature.
+- **Status**: The current state (e.g., `Draft`, `Open`, `In Progress`, `Done`).
+- **Description**: A detailed explanation of the requirement or bug.
+- **Technical Solution**: (Required for refinement) A proposed technical implementation plan. 
+    - This section MUST be added/completed during the refinement phase before any code is written.
+
+## 3. Editing Context Constraints
+- When asked to **edit**, **refine**, or **plan** a ticket:
+  - **DO NOT** modify any source code files (`src/*`, etc.) or files outside of the `/tickets` folder.
+  - Your sole output should be the updated content of the ticket file(s).
+  - Focus on analyzing the codebase to fill out the "Technical Solution" section effectively, but do not apply changes yet.
+
+## 4. Implementation Phase
+- Only proceed to implementation (editing code files) when the ticket has a defined "Technical Solution" and you are explicitly asked to implement it.
