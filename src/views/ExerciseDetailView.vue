@@ -128,7 +128,7 @@ import { useAuthStore } from "../stores/auth";
 import { useSocialStore } from "../stores/social";
 import { useTrainingSessionStore } from "../stores/training-session";
 import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
-import { scheduleRestNotification } from "../utils/notifications";
+import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications";
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
 
@@ -385,6 +385,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  cancelRestNotification();
   clearInterval(timerInterval);
   trainingSession.unsubscribePartnerExercise?.();
   trainingSession.unsubscribeSharedSession?.();

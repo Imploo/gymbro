@@ -17,7 +17,18 @@ export const showRestNotification = async () => {
   });
 };
 
+let activeTimerId = null;
+
+export const cancelRestNotification = () => {
+  if (activeTimerId) {
+    clearTimeout(activeTimerId);
+    activeTimerId = null;
+  }
+};
+
 export const scheduleRestNotification = async (delayMs) => {
+  cancelRestNotification();
+
   const granted = await ensureNotificationPermission();
   if (!granted) return;
   if (delayMs <= 0) {
@@ -25,7 +36,8 @@ export const scheduleRestNotification = async (delayMs) => {
     return;
   }
 
-  setTimeout(() => {
+  activeTimerId = setTimeout(() => {
     showRestNotification();
+    activeTimerId = null;
   }, delayMs);
 };

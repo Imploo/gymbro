@@ -164,9 +164,9 @@ export const useExercisesStore = defineStore("exercises", {
         const stored = readStorage(storageKeys.userExercises, []);
         const next = sortUserExercises(
           stored.map((exercise) => {
-          if (exercise.id !== exerciseId) return exercise;
-          const history = Array.isArray(exercise.history) ? exercise.history : [];
-          return { ...exercise, history: [...history, entry] };
+            if (exercise.id !== exerciseId) return exercise;
+            const history = Array.isArray(exercise.history) ? exercise.history : [];
+            return { ...exercise, history: [...history, entry] };
           })
         );
         this.userExercises = next;
@@ -239,12 +239,12 @@ export const useExercisesStore = defineStore("exercises", {
         const next = exists
           ? stored
           : [
-              ...stored,
-              {
-                id: `global-${trimmed.toLowerCase().replace(/\s+/g, "-")}`,
-                name: trimmed,
-              },
-            ];
+            ...stored,
+            {
+              id: `global-${trimmed.toLowerCase().replace(/\s+/g, "-")}`,
+              name: trimmed,
+            },
+          ];
         const sorted = [...next].sort((a, b) => a.name.localeCompare(b.name));
         this.globalExercises = sorted;
         writeStorage(storageKeys.globalExercises, sorted);

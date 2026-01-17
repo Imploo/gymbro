@@ -27,16 +27,7 @@ const firebaseConfig = {
 const hasConfig = Object.values(firebaseConfig).every(Boolean);
 if (hasConfig) {
   firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
-
-  messaging.onBackgroundMessage((payload) => {
-    const title = payload?.notification?.title || "Gymbro";
-    const options = {
-      body: payload?.notification?.body || "Time for the next set.",
-      icon: "/icon-192.png",
-    };
-    self.registration.showNotification(title, options);
-  });
+  // Remote notification logic removed to avoid conflicts with local timer notifications
 }
 
 self.addEventListener("activate", (event) => {

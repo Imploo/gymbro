@@ -6,8 +6,7 @@ import {
   signOut as firebaseSignOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { auth, db, googleProvider, getMessagingIfSupported } from "../firebase";
-import { getToken } from "firebase/messaging";
+import { auth, db, googleProvider } from "../firebase";
 
 const defaultPreferences = {
   barWeight: 20,
@@ -199,19 +198,6 @@ export const useAuthStore = defineStore("auth", {
       const permission = await Notification.requestPermission();
       const enabled = permission === "granted";
       await this.updatePreferences({ notificationsEnabled: enabled });
-
-      if (enabled) {
-        const messaging = await getMessagingIfSupported();
-        if (messaging) {
-          const token = await getToken(messaging, {
-            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-          });
-          if (token) {
-            const userRef = doc(db, "users", this.user.uid);
-            await updateDoc(userRef, { fcmToken: token });
-          }
-        }
-      }
     },
   },
 });
