@@ -3,13 +3,34 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getMessaging, isSupported } from "firebase/messaging";
 
+const requiredEnvKeys = [
+  "VITE_FIREBASE_API_KEY",
+  "VITE_FIREBASE_AUTH_DOMAIN",
+  "VITE_FIREBASE_PROJECT_ID",
+  "VITE_FIREBASE_STORAGE_BUCKET",
+  "VITE_FIREBASE_MESSAGING_SENDER_ID",
+  "VITE_FIREBASE_APP_ID",
+];
+
+const missingEnvKeys = requiredEnvKeys.filter((key) => {
+  const value = import.meta.env[key];
+  return typeof value !== "string" || value.trim() === "";
+});
+
+if (missingEnvKeys.length > 0) {
+  throw new Error(
+    `[firebase] Missing or empty env vars: ${missingEnvKeys.join(", ")}. ` +
+    "Create a .env file with your Firebase config (see .env.example)."
+  );
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY.trim(),
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN.trim(),
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID.trim(),
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET.trim(),
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID.trim(),
+  appId: import.meta.env.VITE_FIREBASE_APP_ID.trim(),
 };
 
 const app = initializeApp(firebaseConfig);
