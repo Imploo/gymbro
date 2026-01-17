@@ -52,37 +52,7 @@
       </div>
     </div>
 
-    <div class="card column">
-      <div class="row" style="justify-content: space-between; align-items: center;">
-        <strong>Training partners</strong>
-        <button v-if="!sharedSession" class="button secondary" @click="openPartnerModal">
-          Add partner
-        </button>
-      </div>
-      <div v-if="sharedSession" class="row partner-row">
-        <div :class="['avatar', activeUid === auth.user?.uid ? 'avatar-active' : '']">
-          <img v-if="currentProfile.photoURL" :src="currentProfile.photoURL" alt="You" />
-          <span v-else>{{ (currentProfile.displayName || "You").slice(0, 1) }}</span>
-        </div>
-        <div :class="['avatar', activeUid === partnerProfile?.uid ? 'avatar-active' : '']">
-          <img
-            v-if="partnerProfile?.photoURL"
-            :src="partnerProfile.photoURL"
-            alt="Partner"
-          />
-          <span v-else>{{ (partnerProfile?.displayName || "?").slice(0, 1) }}</span>
-        </div>
-        <div class="column">
-          <span class="muted">
-            Shared with {{ partnerProfile?.displayName || "partner" }}
-          </span>
-          <span class="muted" v-if="sharedSession?.primaryUid === auth.user?.uid">
-            You control the rest timer
-          </span>
-        </div>
-      </div>
-      <div v-else class="muted">Train together by adding a partner.</div>
-    </div>
+    <SessionPartners @add-partner="openPartnerModal" />
 
     <div class="card column">
       <div class="row" style="justify-content: space-between;">
@@ -141,59 +111,11 @@
       </div>
     </div>
 
-    <div v-if="showPartnerModal" class="modal-backdrop">
-      <div class="modal card column">
-        <div class="row" style="justify-content: space-between; align-items: center;">
-          <strong>Add training partner</strong>
-          <button class="button secondary" @click="closePartnerModal">Close</button>
-        </div>
-
-        <div class="row" style="gap: 8px; width: 100%;">
-          <input
-            v-model="searchTerm"
-            class="input"
-            placeholder="Search by display name or email"
-            @keyup.enter="exercises.searchUsers(searchTerm)"
-          />
-          <button class="button" @click="exercises.searchUsers(searchTerm)">
-            Search
-          </button>
-        </div>
-
-        <div class="column" style="gap: 8px;">
-          <strong>Friends</strong>
-          <div v-if="friends.length === 0" class="muted">No friends yet.</div>
-          <div v-for="friend in friends" :key="friend.uid" class="row partner-item">
-            <span>{{ friend.displayName || friend.email }}</span>
-            <div class="row" style="gap: 8px;">
-              <button class="button" @click="startSharedSession(friend)">Add</button>
-              <button class="button secondary" @click="unlinkFriend(friend.friendshipId)">
-                Unlink
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="searchResults.length" class="column" style="gap: 8px;">
-          <strong>Search results</strong>
-          <div v-for="user in searchResults" :key="user.uid" class="row partner-item">
-            <span>{{ user.displayName || user.email }}</span>
-            <div class="row" style="gap: 8px;">
-              <button
-                v-if="friendIds.has(user.uid)"
-                class="button"
-                @click="startSharedSession(user)"
-              >
-                Add
-              </button>
-              <button v-else class="button secondary" @click="sendRequest(user)">
-                Send request
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PartnerModal
+      v-if="showPartnerModal"
+      :exercise="exercise"
+      @close="closePartnerModal"
+    />
   </div>
   <div v-else class="card">Loading...</div>
 </template>
@@ -201,12 +123,14 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { doc, onSnapshot } from "firebase/firestore";
 import { useExercisesStore } from "../stores/exercises";
 import { useAuthStore } from "../stores/auth";
+import { useSocialStore } from "../stores/social";
+import { useTrainingSessionStore } from "../stores/training-session";
 import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
 import { scheduleRestNotification } from "../utils/notifications";
-import { db } from "../firebase";
+import SessionPartners from "../components/SessionPartners.vue";
+import PartnerModal from "../components/PartnerModal.vue";
 
 const props = defineProps({
   id: {
@@ -218,37 +142,33 @@ const props = defineProps({
 const router = useRouter();
 const exercises = useExercisesStore();
 const auth = useAuthStore();
+const social = useSocialStore();
+const trainingSession = useTrainingSessionStore();
+
 const timerRemaining = ref(0);
 let timerInterval;
 const showPartnerModal = ref(false);
-const searchTerm = ref("");
-const partnerExercise = ref(null);
-let partnerExerciseUnsub = null;
 
 const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
 );
 
-const sharedSession = computed(() => exercises.sharedSession);
-const isShared = computed(() => Boolean(sharedSession.value?.id));
-const friends = computed(() => exercises.friends);
-const friendRequests = computed(() => exercises.friendRequests);
-const searchResults = computed(() => exercises.userSearchResults);
-const friendIds = computed(() => new Set(friends.value.map((friend) => friend.uid)));
-const currentProfile = computed(() => auth.profile?.profile ?? {});
+const activeUid = computed(() => trainingSession.sharedSession?.activeUid ?? auth.user?.uid);
+const partnerExercise = computed(() => trainingSession.partnerExercise);
+
+const activeExercise = computed(() => {
+  if (!trainingSession.sharedSession) return exercise.value;
+  if (activeUid.value === auth.user?.uid) return exercise.value;
+  return partnerExercise.value;
+});
+
 const partnerProfile = computed(() => {
-  if (!sharedSession.value?.participants) return null;
-  const entries = Object.entries(sharedSession.value.participants);
+  if (!trainingSession.sharedSession?.participants) return null;
+  const entries = Object.entries(trainingSession.sharedSession.participants);
   const other = entries.find(([uid]) => uid !== auth.user?.uid);
   if (!other) return null;
   const [uid, data] = other;
   return { uid, ...data };
-});
-const activeUid = computed(() => sharedSession.value?.activeUid ?? auth.user?.uid);
-const activeExercise = computed(() => {
-  if (!sharedSession.value) return exercise.value;
-  if (activeUid.value === auth.user?.uid) return exercise.value;
-  return partnerExercise.value;
 });
 
 const warmupWeight = computed(() => {
@@ -275,15 +195,15 @@ const historyEntries = computed(() => {
 });
 const restTimerMs = computed(() => {
   const restSeconds = Number(
-    sharedSession.value?.restTimerSeconds ?? preferences.value.restTimerSeconds
+    trainingSession.sharedSession?.restTimerSeconds ?? preferences.value.restTimerSeconds
   );
   if (!Number.isFinite(restSeconds)) return 90_000;
   return Math.max(0, restSeconds) * 1000;
 });
 
 const timerSourceExercise = computed(() => {
-  if (!sharedSession.value) return exercise.value;
-  if (sharedSession.value.primaryUid === auth.user?.uid) return exercise.value;
+  if (!trainingSession.sharedSession) return exercise.value;
+  if (trainingSession.sharedSession.primaryUid === auth.user?.uid) return exercise.value;
   return partnerExercise.value;
 });
 
@@ -314,13 +234,13 @@ const plateStack = computed(() => {
 });
 
 const activeParticipantLabel = computed(() => {
-  if (!sharedSession.value) return "";
+  if (!trainingSession.sharedSession) return "";
   if (activeUid.value === auth.user?.uid) return "You";
   return partnerProfile.value?.displayName || "Partner";
 });
 
 const sharedSuccess = computed(() => {
-  if (!sharedSession.value) return false;
+  if (!trainingSession.sharedSession) return false;
   const own = exercise.value;
   const partner = partnerExercise.value;
   if (!own || !partner) return false;
@@ -353,11 +273,11 @@ const plateStyle = (plate) => {
 };
 
 const getActiveTarget = () => {
-  if (!sharedSession.value) {
+  if (!trainingSession.sharedSession) {
     return { userId: auth.user?.uid, exerciseId: exercise.value?.id };
   }
   const userId = activeUid.value;
-  const exerciseId = sharedSession.value.participants?.[userId]?.exerciseId;
+  const exerciseId = trainingSession.sharedSession.participants?.[userId]?.exerciseId;
   return { userId, exerciseId };
 };
 
@@ -374,9 +294,9 @@ const adjustWeight = async (delta) => {
 
 const completeSet = async () => {
   if (!exercise.value) return;
-  const currentSession = sharedSession.value;
+  const currentSession = trainingSession.sharedSession;
   if (currentSession) {
-    await exercises.completeSharedSet(currentSession, exercise.value);
+    await trainingSession.completeSharedSet(currentSession, exercise.value);
     if (restTimerMs.value > 0 && currentSession.primaryUid === auth.user?.uid) {
       scheduleRestNotification(restTimerMs.value);
     }
@@ -405,8 +325,10 @@ const toggleWarmup = async () => {
 
 const finishExercise = async () => {
   if (!exercise.value) return;
-  if (sharedSession.value) {
-    await exercises.finishSharedSession(sharedSession.value, { success: sharedSuccess.value });
+  if (trainingSession.sharedSession) {
+    await trainingSession.finishSharedSession(trainingSession.sharedSession, {
+      success: sharedSuccess.value,
+    });
     router.push("/exercises");
     return;
   }
@@ -416,7 +338,7 @@ const finishExercise = async () => {
 
 const removeExercise = async () => {
   if (!exercise.value) return;
-  if (sharedSession.value?.status === "active") {
+  if (trainingSession.sharedSession?.status === "active") {
     window.alert("Finish the shared session before removing this exercise.");
     return;
   }
@@ -436,7 +358,7 @@ const updateTimerRemaining = () => {
   const remaining = timerSourceExercise.value.timerEndsAt - Date.now();
   timerRemaining.value = Math.max(0, remaining);
   if (remaining <= 0) {
-    if (sharedSession.value?.primaryUid === auth.user?.uid) {
+    if (trainingSession.sharedSession?.primaryUid === auth.user?.uid) {
       exercises.updateExercise(exercise.value.id, { timerEndsAt: null });
     }
   }
@@ -444,45 +366,19 @@ const updateTimerRemaining = () => {
 
 const openPartnerModal = () => {
   showPartnerModal.value = true;
-  exercises.loadFriendships();
+  social.loadFriendships();
 };
 
 const closePartnerModal = () => {
   showPartnerModal.value = false;
-  searchTerm.value = "";
-  exercises.userSearchResults = [];
-};
-
-const startSharedSession = async (friend) => {
-  if (!exercise.value) return;
-  const sessionId = await exercises.createSharedSession(exercise.value, friend);
-  if (sessionId) {
-    exercises.subscribeSharedSession(sessionId);
-  }
-  closePartnerModal();
-};
-
-const sendRequest = async (user) => {
-  await exercises.sendFriendRequest(user);
-};
-
-const acceptRequest = async (requestId) => {
-  await exercises.acceptFriendRequest(requestId);
-};
-
-const declineRequest = async (requestId) => {
-  await exercises.declineFriendRequest(requestId);
-};
-
-const unlinkFriend = async (friendshipId) => {
-  await exercises.unlinkFriend(friendshipId);
+  social.userSearchResults = [];
 };
 
 onMounted(() => {
   exercises.subscribeUserExercises();
-  exercises.loadFriendships();
+  social.loadFriendships();
   if (exercise.value?.sharedSessionId) {
-    exercises.subscribeSharedSession(exercise.value.sharedSessionId);
+    trainingSession.subscribeSharedSession(exercise.value.sharedSessionId);
   }
   updateTimerRemaining();
   timerInterval = setInterval(updateTimerRemaining, 1000);
@@ -490,85 +386,61 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(timerInterval);
-  clearTimeout(searchTimer);
-  partnerExerciseUnsub?.();
-  exercises.unsubscribeSharedSession?.();
+  trainingSession.unsubscribePartnerExercise?.();
+  trainingSession.unsubscribeSharedSession?.();
 });
 
 watch(
   () => exercise.value?.sharedSessionId,
   (sessionId) => {
     if (!sessionId) {
-      exercises.unsubscribeSharedSession?.();
-      exercises.sharedSession = null;
-      exercises.sharedSessionId = null;
+      trainingSession.unsubscribeSharedSession?.();
+      trainingSession.sharedSession = null;
+      trainingSession.sharedSessionId = null;
       return;
     }
-    exercises.subscribeSharedSession(sessionId);
+    trainingSession.subscribeSharedSession(sessionId);
   }
 );
 
 watch(
-  () => [sharedSession.value?.id, exercise.value?.id],
+  () => [trainingSession.sharedSession?.id, exercise.value?.id],
   ([sessionId, exerciseId]) => {
     if (!sessionId || !exerciseId) return;
-    const entry = sharedSession.value?.participants?.[auth.user?.uid];
+    const entry = trainingSession.sharedSession?.participants?.[auth.user?.uid];
     if (!entry?.exerciseId) {
-      exercises.joinSharedSession(sessionId, exercise.value);
+      trainingSession.joinSharedSession(sessionId, exercise.value);
     }
   }
 );
 
 watch(
   () => [
-    sharedSession.value?.id,
+    trainingSession.sharedSession?.id,
     partnerProfile.value?.uid,
     partnerProfile.value?.exerciseId,
   ],
   ([sessionId, partnerUid, partnerExerciseId]) => {
     if (!sessionId || !partnerUid || !partnerExerciseId) {
-      partnerExercise.value = null;
-      partnerExerciseUnsub?.();
-      partnerExerciseUnsub = null;
+       trainingSession.subscribePartnerExercise(null, null);
+       return;
+    }
+    if (trainingSession.sharedSession?.status === "finished") {
+      trainingSession.subscribePartnerExercise(null, null);
       return;
     }
-    if (sharedSession.value?.status === "finished") {
-      partnerExercise.value = null;
-      partnerExerciseUnsub?.();
-      partnerExerciseUnsub = null;
-      return;
-    }
-    partnerExerciseUnsub?.();
-    const ref = doc(db, "users", partnerUid, "exercises", partnerExerciseId);
-    partnerExerciseUnsub = onSnapshot(ref, (snap) => {
-      partnerExercise.value = snap.exists() ? { id: snap.id, ...snap.data() } : null;
-    });
+    trainingSession.subscribePartnerExercise(partnerUid, partnerExerciseId);
   },
   { immediate: true }
 );
 
 watch(
-  () => [sharedSession.value?.status, exercise.value?.sharedSessionId],
+  () => [trainingSession.sharedSession?.status, exercise.value?.sharedSessionId],
   ([status, sessionId]) => {
     if (status === "finished" && sessionId) {
       exercises.updateExercise(exercise.value.id, { sharedSessionId: null });
       router.push("/exercises");
     }
-  }
-);
-
-let searchTimer;
-watch(
-  () => searchTerm.value,
-  (value) => {
-    clearTimeout(searchTimer);
-    if (!value.trim()) {
-      exercises.userSearchResults = [];
-      return;
-    }
-    searchTimer = setTimeout(() => {
-      exercises.searchUsers(value);
-    }, 250);
   }
 );
 </script>
