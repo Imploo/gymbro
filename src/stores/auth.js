@@ -110,21 +110,25 @@ export const useAuthStore = defineStore("auth", {
       }
 
       const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        const profile = {
-          profile: {
-            displayName: user.displayName ?? "",
-            email: user.email ?? "",
-            photoURL: user.photoURL ?? "",
-          },
-          preferences: defaultPreferences,
-          isAdmin: false,
-        };
-        await setDoc(userRef, profile);
-        this.profile = profile;
-      } else {
-        this.profile = snap.data();
+      try {
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          const profile = {
+            profile: {
+              displayName: user.displayName ?? "",
+              email: user.email ?? "",
+              photoURL: user.photoURL ?? "",
+            },
+            preferences: defaultPreferences,
+            isAdmin: false,
+          };
+          await setDoc(userRef, profile);
+          this.profile = profile;
+        } else {
+          this.profile = snap.data();
+        }
+      } catch (error) {
+        this.profile = buildProfile(user, null);
       }
     },
     async signIn() {

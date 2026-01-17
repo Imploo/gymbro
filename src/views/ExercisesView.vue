@@ -1,5 +1,24 @@
 <template>
   <div class="column">
+    <div v-if="exercises.friendRequests.length" class="card column">
+      <strong>Friend requests</strong>
+      <div
+        v-for="request in exercises.friendRequests"
+        :key="request.id"
+        class="row partner-item"
+      >
+        <span>{{ request.requester.displayName || request.requester.email }}</span>
+        <div class="row" style="gap: 8px;">
+          <button class="button" @click="exercises.acceptFriendRequest(request.id)">
+            Accept
+          </button>
+          <button class="button secondary" @click="exercises.declineFriendRequest(request.id)">
+            Decline
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="card column">
       <h2>My exercises</h2>
       <div v-if="exercises.userExercises.length === 0" class="muted">
@@ -38,5 +57,6 @@ const isExerciseActive = (exercise) => Number(exercise.setsDone ?? 0) > 0;
 
 onMounted(async () => {
   exercises.subscribeUserExercises();
+  exercises.loadFriendships();
 });
 </script>
