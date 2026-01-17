@@ -27,6 +27,7 @@ export const cancelRestNotification = () => {
 };
 
 export const scheduleRestNotification = async (delayMs) => {
+  // Cancel any existing timer first
   cancelRestNotification();
 
   const granted = await ensureNotificationPermission();
