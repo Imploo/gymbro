@@ -22,11 +22,34 @@
       </div>
     </header>
     <RouterView />
+    <div
+      v-if="updatePromptOpen"
+      class="update-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="update-title"
+    >
+      <div class="update-card">
+        <h2 id="update-title" class="update-title">Update available</h2>
+        <p class="update-text">
+          A newer version of Gymbro is ready. Reload now to get the latest
+          updates.
+        </p>
+        <div class="update-actions">
+          <button class="button secondary" type="button" @click="dismissUpdate">
+            Later
+          </button>
+          <button class="button" type="button" @click="applyUpdate">
+            Reload now
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "./stores/auth";
 
@@ -35,6 +58,8 @@ const router = useRouter();
 const route = useRoute();
 const isAdmin = computed(() => auth.isAdmin);
 const menuOpen = ref(false);
+const updatePromptOpen = ref(false);
+const updateRegistration = ref(null);
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value;
@@ -53,4 +78,26 @@ watch(
     }
   }
 );
+
+const handleServiceWorkerUpdate = (event) => {
+  updateRegistration.value = event.detail?.registration || null;
+  updatePromptOpen.value = true;
+};
+
+const applyUpdate = () => {
+  updatePromptOpen.value = false;
+  updateRegistration.value?.waiting?.postMessage({ type: "SKIP_WAITING" });
+};
+
+const dismissUpdate = () => {
+  updatePromptOpen.value = false;
+};
+
+onMounted(() => {
+  window.addEventListener("sw-update", handleServiceWorkerUpdate);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("sw-update", handleServiceWorkerUpdate);
+});
 </script>

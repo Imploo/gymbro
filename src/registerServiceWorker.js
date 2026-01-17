@@ -1,20 +1,31 @@
+/* global __APP_VERSION__ */
+
 export const registerServiceWorker = () => {
   if (!("serviceWorker" in navigator)) {
     return;
   }
 
   window.addEventListener("load", () => {
+    const appVersion =
+      typeof __APP_VERSION__ === "string" && __APP_VERSION__.length > 0
+        ? __APP_VERSION__
+        : "dev";
+    const swUrl = `/firebase-messaging-sw.js?v=${appVersion}`;
+
     navigator.serviceWorker
-      .register("/firebase-messaging-sw.js")
+      .register(swUrl)
       .then((registration) => {
         let reloading = false;
+        let updatePrompted = false;
 
         const promptForUpdate = () => {
-          const shouldReload = window.confirm(
-            "A new version is available. Reload now?"
+          if (updatePrompted) return;
+          updatePrompted = true;
+          window.dispatchEvent(
+            new CustomEvent("sw-update", {
+              detail: { registration },
+            })
           );
-          if (!shouldReload) return;
-          registration.waiting?.postMessage({ type: "SKIP_WAITING" });
         };
 
         if (registration.waiting && navigator.serviceWorker.controller) {

@@ -2,7 +2,17 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.4/firebase-messaging-compat.js");
 
-const RUNTIME_CACHE = "gymbro-runtime-v1";
+const APP_VERSION =
+  new URL(self.location).searchParams.get("v") || "dev";
+const RUNTIME_CACHE = `gymbro-runtime-${APP_VERSION}`;
+const BYPASS_CACHE_PATHS = new Set([
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/favicon.ico",
+  "/apple-touch-icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+]);
 
 // Optional: only initialize Firebase Messaging if config is provided.
 const firebaseConfig = {
@@ -52,6 +62,11 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (BYPASS_CACHE_PATHS.has(url.pathname)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     event.respondWith(
