@@ -21,6 +21,7 @@ test("auth gate and sign out", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
 
   await page.getByRole("button", { name: "Sign out" }).click();
+  await page.goto("/auth");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
@@ -60,6 +61,10 @@ test("exercise lifecycle and rest timer", async ({ page }) => {
 
   await page.getByRole("button", { name: "Finish exercise" }).click();
   await expect(page).toHaveURL(/\/exercises$/);
+  const storedExercises = await page.evaluate(() =>
+    JSON.parse(window.localStorage.getItem("gymbro.e2e.userExercises"))
+  );
+  expect(storedExercises[0].currentWeight).toBe(22.5);
   await expect(page.getByText("22.5 kg · Sets 0/5")).toBeVisible();
 });
 
@@ -72,7 +77,9 @@ test("add custom exercise and update settings", async ({ page }) => {
   await expect(page.getByText("Cable Row")).toBeVisible();
 
   await page.goto("/settings");
-  await page.getByRole("spinbutton").fill("25");
+  const numberInputs = page.locator('input[type="number"]');
+  await numberInputs.first().fill("25");
+  await numberInputs.nth(1).fill("90");
   await page.getByRole("textbox").fill("20, 10, 5");
   await page.getByRole("button", { name: "Save" }).click();
   await page.getByRole("button", { name: "Enable notifications" }).click();

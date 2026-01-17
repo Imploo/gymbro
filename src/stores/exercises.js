@@ -83,7 +83,7 @@ export const useExercisesStore = defineStore("exercises", {
     },
     subscribeUserExercises() {
       const auth = useAuthStore();
-      if (!auth.user) return;
+      if (!auth.user && !isE2E) return;
       if (isE2E) {
         const stored = readStorage(storageKeys.userExercises, []);
         this.userExercises = stored;
@@ -104,7 +104,7 @@ export const useExercisesStore = defineStore("exercises", {
     },
     async createExerciseFromGlobal(name) {
       const auth = useAuthStore();
-      if (!auth.user) return;
+      if (!auth.user && !isE2E) return;
       const trimmed = normalizeName(name);
       if (!trimmed) return;
       if (isE2E) {
@@ -134,7 +134,7 @@ export const useExercisesStore = defineStore("exercises", {
     },
     async updateExercise(exerciseId, patch) {
       const auth = useAuthStore();
-      if (!auth.user) return;
+      if (!auth.user && !isE2E) return;
       if (isE2E) {
         const stored = readStorage(storageKeys.userExercises, []);
         const next = stored.map((exercise) =>
@@ -177,7 +177,7 @@ export const useExercisesStore = defineStore("exercises", {
       await this.updateExercise(exercise.id, update);
       return false;
     },
-    async finishExercise(exercise, { addWeight = false } = {}) {
+    async finishExercise(exercise, { addWeight = true } = {}) {
       const update = {
         currentWeight: exercise.currentWeight + (addWeight ? 2.5 : 0),
         setsDone: 0,
