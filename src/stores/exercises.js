@@ -149,10 +149,15 @@ export const useExercisesStore = defineStore("exercises", {
       await updateDoc(ref, patch);
     },
     async completeSet(exercise) {
+      const auth = useAuthStore();
+      const restSeconds = Number(auth.preferences.restTimerSeconds);
+      const restTimerMs = Number.isFinite(restSeconds)
+        ? Math.max(0, restSeconds) * 1000
+        : 90_000;
       const update = {};
 
       if (exercise.warmupEnabled) {
-        update.timerEndsAt = Date.now() + 90_000;
+        update.timerEndsAt = restTimerMs > 0 ? Date.now() + restTimerMs : null;
         const nextWarmup = exercise.warmupSetIndex + 1;
         update.warmupSetIndex = nextWarmup;
         const warmupWeight = exercise.currentWeight / 2 + nextWarmup * 10;
@@ -166,7 +171,7 @@ export const useExercisesStore = defineStore("exercises", {
           return true;
         }
         update.setsDone = nextSetsDone;
-        update.timerEndsAt = Date.now() + 90_000;
+        update.timerEndsAt = restTimerMs > 0 ? Date.now() + restTimerMs : null;
       }
 
       await this.updateExercise(exercise.id, update);

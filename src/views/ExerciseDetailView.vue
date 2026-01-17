@@ -101,6 +101,11 @@ const warmupWeight = computed(() => {
 });
 
 const preferences = computed(() => auth.preferences);
+const restTimerMs = computed(() => {
+  const restSeconds = Number(preferences.value.restTimerSeconds);
+  if (!Number.isFinite(restSeconds)) return 90_000;
+  return Math.max(0, restSeconds) * 1000;
+});
 
 const displayWeight = computed(() => {
   if (!exercise.value) return 0;
@@ -160,7 +165,9 @@ const completeSet = async () => {
     router.push("/exercises");
     return;
   }
-  scheduleRestNotification(90_000);
+  if (restTimerMs.value > 0) {
+    scheduleRestNotification(restTimerMs.value);
+  }
 };
 
 const toggleWarmup = async () => {

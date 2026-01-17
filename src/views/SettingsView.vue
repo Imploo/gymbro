@@ -6,6 +6,9 @@
       <input class="input" type="number" v-model.number="barWeight" />
       <label class="muted">Plates (kg, comma separated)</label>
       <input class="input" v-model="plateConfigInput" />
+      <label class="muted">Rest timer (seconds)</label>
+      <input class="input" type="number" min="0" v-model.number="restTimerSeconds" />
+      <p class="muted">Set to 0 to disable the rest timer.</p>
       <button class="button" @click="save">Save</button>
     </div>
 
@@ -27,22 +30,28 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
 const barWeight = ref(auth.preferences.barWeight);
 const plateConfigInput = ref(auth.preferences.plateConfig.join(", "));
+const restTimerSeconds = ref(auth.preferences.restTimerSeconds);
 
 const save = async () => {
   const plates = plateConfigInput.value
     .split(",")
     .map((value) => Number(value.trim()))
     .filter((value) => !Number.isNaN(value) && value > 0);
+  const restSeconds = Number(restTimerSeconds.value);
+  const restTimerValue = Number.isFinite(restSeconds)
+    ? Math.max(0, restSeconds)
+    : auth.preferences.restTimerSeconds;
 
   await auth.updatePreferences({
     barWeight: Number(barWeight.value),
     plateConfig: plates,
+    restTimerSeconds: restTimerValue,
   });
 };
 

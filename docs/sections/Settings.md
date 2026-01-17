@@ -1,15 +1,15 @@
 # Settings
 
 ## Goal
-- Allow users to update bar weight, plate config, and notifications.
+- Allow users to update bar weight, plate config, rest timer, and notifications.
 
 ## UI states
-- Editable fields for bar weight and plate list.
+- Editable fields for bar weight, plate list, and rest timer seconds.
 - Notification enable button.
 - Sign out button.
 
 ## Data flow
-- Update `users/{uid}.preferences`.
+- Update `users/{uid}.preferences`, including `restTimerSeconds`.
 - Store `fcmToken` when notifications are enabled.
 
 ## Edge cases
