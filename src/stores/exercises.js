@@ -73,10 +73,15 @@ export const useExercisesStore = defineStore("exercises", {
       await updateDoc(ref, patch);
     },
     async completeSet(exercise) {
+      const auth = useAuthStore();
+      const restSeconds = Number(auth.preferences.restTimerSeconds);
+      const restTimerMs = Number.isFinite(restSeconds)
+        ? Math.max(0, restSeconds) * 1000
+        : 90_000;
       const nextSetsDone = exercise.setsDone + 1;
       const update = {
         setsDone: nextSetsDone,
-        timerEndsAt: Date.now() + 90_000,
+        timerEndsAt: restTimerMs > 0 ? Date.now() + restTimerMs : null,
       };
 
       if (exercise.warmupEnabled) {
