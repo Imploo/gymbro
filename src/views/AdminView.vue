@@ -21,17 +21,15 @@
 
 <script setup>
 import { onMounted, ref } from "vue";
-import { addDoc, collection } from "firebase/firestore";
 import { useAuthStore } from "../stores/auth";
 import { useExercisesStore } from "../stores/exercises";
-import { db } from "../firebase";
 
 const auth = useAuthStore();
 const exercises = useExercisesStore();
 const globalName = ref("");
 
 const addGlobal = async () => {
-  await addDoc(collection(db, "exercises"), { name: globalName.value.trim() });
+  await exercises.addGlobalExercise(globalName.value.trim());
   globalName.value = "";
   await exercises.loadGlobalExercises();
 };

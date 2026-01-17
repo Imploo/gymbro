@@ -8,6 +8,21 @@ describe("calculatePlates", () => {
 
     expect(result).toEqual({
       targetPerSide: 40,
+      remaining: 2.5,
+      plates: [
+        { plate: 20, count: 1 },
+        { plate: 10, count: 1 },
+        { plate: 5, count: 1 },
+        { plate: 2.5, count: 1 },
+      ],
+    });
+  });
+
+  it("uses duplicate entries as extra plates per side", () => {
+    const result = calculatePlates(100, 20, [20, 20, 10, 5, 2.5]);
+
+    expect(result).toEqual({
+      targetPerSide: 40,
       remaining: 0,
       plates: [{ plate: 20, count: 2 }],
     });
