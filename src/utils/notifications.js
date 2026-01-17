@@ -1,3 +1,11 @@
+const ensureNotificationPermission = async () => {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  const result = await Notification.requestPermission();
+  return result === "granted";
+};
+
 export const showRestNotification = async () => {
   if (!("serviceWorker" in navigator)) return;
   if (Notification.permission !== "granted") return;
@@ -9,7 +17,9 @@ export const showRestNotification = async () => {
   });
 };
 
-export const scheduleRestNotification = (delayMs) => {
+export const scheduleRestNotification = async (delayMs) => {
+  const granted = await ensureNotificationPermission();
+  if (!granted) return;
   if (delayMs <= 0) {
     showRestNotification();
     return;
