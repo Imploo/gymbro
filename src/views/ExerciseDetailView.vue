@@ -80,6 +80,11 @@ const exercise = computed(() =>
 );
 
 const preferences = computed(() => auth.preferences);
+const restTimerMs = computed(() => {
+  const restSeconds = Number(preferences.value.restTimerSeconds);
+  if (!Number.isFinite(restSeconds)) return 90_000;
+  return Math.max(0, restSeconds) * 1000;
+});
 
 const plateBreakdown = computed(() => {
   if (!exercise.value) return { plates: [], remaining: 0 };
@@ -104,7 +109,9 @@ const adjustWeight = async (delta) => {
 const completeSet = async () => {
   if (!exercise.value) return;
   await exercises.completeSet(exercise.value);
-  scheduleRestNotification(90_000);
+  if (restTimerMs.value > 0) {
+    scheduleRestNotification(restTimerMs.value);
+  }
 };
 
 const toggleWarmup = async () => {

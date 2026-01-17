@@ -13,6 +13,7 @@ const defaultPreferences = {
   barWeight: 20,
   plateConfig: [20, 15, 10, 5, 2.5, 1.25],
   notificationsEnabled: false,
+  restTimerSeconds: 90,
 };
 
 export const useAuthStore = defineStore("auth", {
@@ -24,7 +25,10 @@ export const useAuthStore = defineStore("auth", {
   }),
   getters: {
     isAdmin: (state) => state.profile?.isAdmin === true,
-    preferences: (state) => state.profile?.preferences ?? defaultPreferences,
+    preferences: (state) => ({
+      ...defaultPreferences,
+      ...(state.profile?.preferences ?? {}),
+    }),
   },
   actions: {
     async init() {
