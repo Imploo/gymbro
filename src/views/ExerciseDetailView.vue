@@ -205,7 +205,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { useExercisesStore } from "../stores/exercises";
 import { useAuthStore } from "../stores/auth";
 import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
-import { scheduleRestNotification } from "../utils/notifications";
+import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications";
 import { db } from "../firebase";
 
 const props = defineProps({
@@ -489,6 +489,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  cancelRestNotification();
   clearInterval(timerInterval);
   clearTimeout(searchTimer);
   partnerExerciseUnsub?.();
