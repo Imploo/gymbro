@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   getDocs,
@@ -22,6 +23,7 @@ const defaultExercise = {
   warmupSetIndex: 0,
   lastCompletedAt: null,
   timerEndsAt: null,
+  history: [],
 };
 
 const isE2E = import.meta.env.VITE_E2E === "true";
@@ -55,6 +57,17 @@ const seedGlobalExercises = () => [
 const normalizeName = (name) => name.trim();
 const buildExerciseId = () =>
   `ex-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+const getLastCompletedAt = (exercise) =>
+  typeof exercise.lastCompletedAt === "number"
+    ? exercise.lastCompletedAt
+    : Number.NEGATIVE_INFINITY;
+const sortUserExercises = (exercises) =>
+  [...exercises].sort((a, b) => {
+    const lastA = getLastCompletedAt(a);
+    const lastB = getLastCompletedAt(b);
+    if (lastA !== lastB) return lastA - lastB;
+    return (a.name || "").localeCompare(b.name || "");
+  });
 
 export const useExercisesStore = defineStore("exercises", {
   state: () => ({
@@ -86,7 +99,9 @@ export const useExercisesStore = defineStore("exercises", {
       if (!auth.user && !isE2E) return;
       if (isE2E) {
         const stored = readStorage(storageKeys.userExercises, []);
-        this.userExercises = stored;
+        const sorted = sortUserExercises(stored);
+        this.userExercises = sorted;
+        writeStorage(storageKeys.userExercises, sorted);
         return;
       }
 
@@ -96,10 +111,11 @@ export const useExercisesStore = defineStore("exercises", {
         orderBy("name")
       );
       this.unsubscribeUser = onSnapshot(q, (snap) => {
-        this.userExercises = snap.docs.map((docSnap) => ({
+        const next = snap.docs.map((docSnap) => ({
           id: docSnap.id,
           ...docSnap.data(),
         }));
+        this.userExercises = sortUserExercises(next);
       });
     },
     async createExerciseFromGlobal(name) {
@@ -109,7 +125,7 @@ export const useExercisesStore = defineStore("exercises", {
       if (!trimmed) return;
       if (isE2E) {
         const stored = readStorage(storageKeys.userExercises, []);
-        const next = [
+        const next = sortUserExercises([
           ...stored,
           {
             id: buildExerciseId(),
@@ -117,7 +133,7 @@ export const useExercisesStore = defineStore("exercises", {
             ...defaultExercise,
             warmupEnabled: true,
           },
-        ];
+        ]);
         this.userExercises = next;
         writeStorage(storageKeys.userExercises, next);
         return;
@@ -137,8 +153,10 @@ export const useExercisesStore = defineStore("exercises", {
       if (!auth.user && !isE2E) return;
       if (isE2E) {
         const stored = readStorage(storageKeys.userExercises, []);
-        const next = stored.map((exercise) =>
-          exercise.id === exerciseId ? { ...exercise, ...patch } : exercise
+        const next = sortUserExercises(
+          stored.map((exercise) =>
+            exercise.id === exerciseId ? { ...exercise, ...patch } : exercise
+          )
         );
         this.userExercises = next;
         writeStorage(storageKeys.userExercises, next);
@@ -147,6 +165,26 @@ export const useExercisesStore = defineStore("exercises", {
 
       const ref = doc(db, "users", auth.user.uid, "exercises", exerciseId);
       await updateDoc(ref, patch);
+    },
+    async addHistoryEntry(exerciseId, entry) {
+      const auth = useAuthStore();
+      if (!auth.user && !isE2E) return;
+      if (isE2E) {
+        const stored = readStorage(storageKeys.userExercises, []);
+        const next = sortUserExercises(
+          stored.map((exercise) => {
+          if (exercise.id !== exerciseId) return exercise;
+          const history = Array.isArray(exercise.history) ? exercise.history : [];
+          return { ...exercise, history: [...history, entry] };
+          })
+        );
+        this.userExercises = next;
+        writeStorage(storageKeys.userExercises, next);
+        return;
+      }
+
+      const ref = doc(db, "users", auth.user.uid, "exercises", exerciseId);
+      await updateDoc(ref, { history: arrayUnion(entry) });
     },
     async completeSet(exercise) {
       const auth = useAuthStore();
@@ -167,7 +205,7 @@ export const useExercisesStore = defineStore("exercises", {
       } else {
         const nextSetsDone = exercise.setsDone + 1;
         if (nextSetsDone >= exercise.setsTarget) {
-          await this.finishExercise(exercise, { addWeight: true });
+          await this.finishExercise(exercise, { addWeight: true, success: true });
           return true;
         }
         update.setsDone = nextSetsDone;
@@ -177,7 +215,12 @@ export const useExercisesStore = defineStore("exercises", {
       await this.updateExercise(exercise.id, update);
       return false;
     },
-    async finishExercise(exercise, { addWeight = true } = {}) {
+    async finishExercise(exercise, { addWeight = true, success = false } = {}) {
+      await this.addHistoryEntry(exercise.id, {
+        at: Date.now(),
+        weight: exercise.currentWeight,
+        success,
+      });
       const update = {
         currentWeight: exercise.currentWeight + (addWeight ? 2.5 : 0),
         setsDone: 0,

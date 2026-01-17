@@ -32,6 +32,18 @@
     color: inherit;
     text-decoration: none;
   }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 @layer components {
@@ -56,9 +68,102 @@
     flex-wrap: wrap;
   }
 
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .topbar-title {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .menu {
+    position: relative;
+  }
+
+  .menu-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--base);
+    background: var(--base-dark);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .menu-button:hover {
+    background: var(--base);
+  }
+
+  .menu-button:active {
+    transform: scale(0.98);
+  }
+
+  .menu-icon {
+    position: relative;
+    width: 18px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 999px;
+  }
+
+  .menu-icon::before,
+  .menu-icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 18px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 999px;
+  }
+
+  .menu-icon::before {
+    top: -6px;
+  }
+
+  .menu-icon::after {
+    top: 6px;
+  }
+
+  .menu-panel {
+    position: absolute;
+    right: 0;
+    top: 48px;
+    min-width: 160px;
+    display: grid;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid var(--base);
+    background: var(--base-dark);
+    color: var(--text);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    z-index: 10;
+  }
+
+  .menu-link {
+    padding: 8px 10px;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+
+  .menu-link:hover {
+    background: var(--base);
+  }
+
   .exercise-row {
     justify-content: space-between;
     cursor: pointer;
+  }
+
+  .history-row {
+    justify-content: space-between;
   }
 
   .column {
@@ -107,6 +212,24 @@
     border-radius: 999px;
     padding: 4px 10px;
     font-size: 12px;
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--base);
+  }
+
+  .status-success {
+    background: #3b6f4a;
+    color: var(--text);
+  }
+
+  .status-missed {
+    background: var(--accent);
+    color: var(--text);
   }
 
   .barbell-visual {

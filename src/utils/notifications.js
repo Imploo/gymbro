@@ -13,7 +13,7 @@ export const showRestNotification = async () => {
   const registration = await navigator.serviceWorker.ready;
   await registration.showNotification("Rest is over", {
     body: "Time for the next set.",
-    icon: "/icon-192.png",
+    icon: "/icon.svg",
   });
 };
 

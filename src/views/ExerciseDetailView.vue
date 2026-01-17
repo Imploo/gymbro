@@ -66,6 +66,25 @@
     <div class="card column">
       <button class="button danger" @click="finishExercise">Finish exercise</button>
     </div>
+
+    <div class="card column">
+      <strong>History</strong>
+      <div v-if="historyEntries.length === 0" class="muted">No history yet.</div>
+      <div v-else class="column" style="gap: 8px;">
+        <div
+          v-for="entry in historyEntries"
+          :key="entry.key"
+          class="row"
+          style="justify-content: space-between;"
+        >
+          <span>{{ entry.dateLabel }}</span>
+          <span>{{ entry.weight }} kg</span>
+          <span :class="['status-pill', entry.success ? 'status-success' : 'status-missed']">
+            {{ entry.success ? "Success" : "Missed" }}
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
   <div v-else class="card">Loading...</div>
 </template>
@@ -101,6 +120,18 @@ const warmupWeight = computed(() => {
 });
 
 const preferences = computed(() => auth.preferences);
+const historyEntries = computed(() => {
+  if (!exercise.value?.history) return [];
+  return [...exercise.value.history]
+    .filter((entry) => entry && typeof entry.at === "number")
+    .sort((a, b) => b.at - a.at)
+    .map((entry) => ({
+      key: `${entry.at}-${entry.weight}-${entry.success}`,
+      dateLabel: new Date(entry.at).toLocaleDateString(),
+      weight: entry.weight ?? "-",
+      success: Boolean(entry.success),
+    }));
+});
 const restTimerMs = computed(() => {
   const restSeconds = Number(preferences.value.restTimerSeconds);
   if (!Number.isFinite(restSeconds)) return 90_000;
@@ -179,7 +210,7 @@ const toggleWarmup = async () => {
 
 const finishExercise = async () => {
   if (!exercise.value) return;
-  await exercises.finishExercise(exercise.value);
+  await exercises.finishExercise(exercise.value, { success: false });
   router.push("/exercises");
 };
 
