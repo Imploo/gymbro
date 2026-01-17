@@ -13,16 +13,32 @@
 
       <div class="card column">
         <strong>Total weight</strong>
+        <div class="barbell-visual">
+          <div class="plate-stack reverse">
+            <div
+              v-for="(plate, index) in plateStack"
+              :key="`left-${plate}-${index}`"
+              class="plate"
+              :style="plateStyle(plate)"
+            >
+              <span class="plate-label">{{ plate }}</span>
+            </div>
+          </div>
+          <div class="barbell-bar"></div>
+          <div class="plate-stack">
+            <div
+              v-for="(plate, index) in plateStack"
+              :key="`right-${plate}-${index}`"
+              class="plate"
+              :style="plateStyle(plate)"
+            >
+              <span class="plate-label">{{ plate }}</span>
+            </div>
+          </div>
+        </div>
         <div class="row" style="justify-content: space-between;">
           <span>Bar</span>
           <span>{{ preferences.barWeight }} kg</span>
-        </div>
-        <div v-for="plate in plateBreakdown.plates" :key="plate.plate" class="row" style="justify-content: space-between;">
-          <span>{{ plate.plate }} kg plate</span>
-          <span>x{{ plate.count }} each side</span>
-        </div>
-        <div v-if="plateBreakdown.remaining > 0" class="muted">
-          Remaining per side: {{ plateBreakdown.remaining.toFixed(2) }} kg
         </div>
       </div>
     </div>
@@ -34,8 +50,8 @@
       </div>
       <div class="row" style="justify-content: space-between;">
         <button class="button" @click="completeSet">Complete set</button>
-        <button class="button secondary" @click="toggleWarmup">
-          {{ exercise.warmupEnabled ? "Warmup on" : "Warmup off" }}
+        <button :class="['button', exercise.warmupEnabled ? 'danger' : 'secondary']" @click="toggleWarmup">
+          Warmup
         </button>
       </div>
       <div v-if="exercise.warmupEnabled" class="muted">
@@ -79,21 +95,57 @@ const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
 );
 
+const warmupWeight = computed(() => {
+  if (!exercise.value) return 0;
+  return getWarmupWeight(exercise.value.currentWeight, exercise.value.warmupSetIndex);
+});
+
 const preferences = computed(() => auth.preferences);
+
+const displayWeight = computed(() => {
+  if (!exercise.value) return 0;
+  return exercise.value.warmupEnabled ? warmupWeight.value : exercise.value.currentWeight;
+});
 
 const plateBreakdown = computed(() => {
   if (!exercise.value) return { plates: [], remaining: 0 };
   return calculatePlates(
-    exercise.value.currentWeight,
+    displayWeight.value,
     preferences.value.barWeight,
     preferences.value.plateConfig
   );
 });
 
-const warmupWeight = computed(() => {
-  if (!exercise.value) return 0;
-  return getWarmupWeight(exercise.value.currentWeight, exercise.value.warmupSetIndex);
+const plateStack = computed(() => {
+  const stack = [];
+  plateBreakdown.value.plates.forEach(({ plate, count }) => {
+    for (let i = 0; i < count; i += 1) {
+      stack.push(plate);
+    }
+  });
+  return stack;
 });
+
+const plateColors = {
+  20: "#2b64b4",
+  15: "#e2c14b",
+  10: "#2f8b57",
+  5: "#c73b3b",
+  2.5: "#1f1f1f",
+  1.25: "#1f1f1f",
+};
+
+const plateColor = (plate) => plateColors[plate] ?? "#8a6f4a";
+
+const plateStyle = (plate) => {
+  const size = Math.min(66, Math.max(18, 18 + plate * 1.8));
+  const height = Math.min(92, Math.max(28, 26 + plate * 2.6));
+  return {
+    "--plate-color": plateColor(plate),
+    "--plate-width": `${size}px`,
+    "--plate-height": `${height}px`,
+  };
+};
 
 const adjustWeight = async (delta) => {
   if (!exercise.value) return;
@@ -103,7 +155,11 @@ const adjustWeight = async (delta) => {
 
 const completeSet = async () => {
   if (!exercise.value) return;
-  await exercises.completeSet(exercise.value);
+  const finished = await exercises.completeSet(exercise.value);
+  if (finished) {
+    router.push("/exercises");
+    return;
+  }
   scheduleRestNotification(90_000);
 };
 

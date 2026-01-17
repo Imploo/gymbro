@@ -3,6 +3,8 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getMessaging, isSupported } from "firebase/messaging";
 
+const isE2E = import.meta.env.VITE_E2E === "true";
+
 const requiredEnvKeys = [
   "VITE_FIREBASE_API_KEY",
   "VITE_FIREBASE_AUTH_DOMAIN",
@@ -17,21 +19,30 @@ const missingEnvKeys = requiredEnvKeys.filter((key) => {
   return typeof value !== "string" || value.trim() === "";
 });
 
-if (missingEnvKeys.length > 0) {
+if (!isE2E && missingEnvKeys.length > 0) {
   throw new Error(
     `[firebase] Missing or empty env vars: ${missingEnvKeys.join(", ")}. ` +
     "Create a .env file with your Firebase config (see .env.example)."
   );
 }
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY.trim(),
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN.trim(),
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID.trim(),
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET.trim(),
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID.trim(),
-  appId: import.meta.env.VITE_FIREBASE_APP_ID.trim(),
-};
+const firebaseConfig = isE2E
+  ? {
+    apiKey: "e2e",
+    authDomain: "e2e.local",
+    projectId: "e2e",
+    storageBucket: "e2e.local",
+    messagingSenderId: "e2e",
+    appId: "e2e",
+  }
+  : {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY.trim(),
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN.trim(),
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID.trim(),
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET.trim(),
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID.trim(),
+    appId: import.meta.env.VITE_FIREBASE_APP_ID.trim(),
+  };
 
 const app = initializeApp(firebaseConfig);
 
