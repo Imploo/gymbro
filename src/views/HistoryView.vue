@@ -8,6 +8,7 @@
           <div class="column">
             <strong>{{ entry.exerciseName }}</strong>
             <span class="muted">{{ entry.dateLabel }}</span>
+            <span v-if="entry.partnerLabel" class="muted">with {{ entry.partnerLabel }}</span>
           </div>
           <span>{{ entry.weight }} kg</span>
           <span :class="['status-pill', entry.success ? 'status-success' : 'status-missed']">
@@ -34,6 +35,7 @@ const historyEntries = computed(() => {
       dateLabel: new Date(entry.at).toLocaleDateString(),
       weight: entry.weight ?? "-",
       success: Boolean(entry.success),
+      partnerLabel: entry.partner?.displayName ?? "",
       at: entry.at,
     }));
   });
