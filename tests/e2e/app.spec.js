@@ -6,10 +6,10 @@ const signIn = async (page) => {
   await page.goto("/exercises");
 };
 
-test.beforeEach(async ({ context }) => {
-  await context.addInitScript(() => {
-    window.localStorage.clear();
-  });
+test.beforeEach(async ({ page }) => {
+  await page.goto("/auth");
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
 });
 
 test("auth gate and sign out", async ({ page }) => {

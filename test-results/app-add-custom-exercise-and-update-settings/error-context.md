@@ -26,5 +26,5 @@
       - button "Enable notifications" [ref=e23] [cursor=pointer]
     - generic [ref=e24]:
       - heading "Account" [level=3] [ref=e25]
-      - button "Sign out" [active] [ref=e26] [cursor=pointer]
+      - button "Sign out" [ref=e26] [cursor=pointer]
 ```
