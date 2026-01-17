@@ -137,16 +137,18 @@ const plateColors = {
   10: "#2f8b57",
   5: "#c73b3b",
   2.5: "#1f1f1f",
-  1.25: "#1f1f1f",
+  1.25: "#f5f5f2",
 };
 
 const plateColor = (plate) => plateColors[plate] ?? "#8a6f4a";
+const plateTextColor = (plate) => (plate === 2.5 ? "#f5f5f2" : "rgba(0, 0, 0, 0.75)");
 
 const plateStyle = (plate) => {
-  const size = Math.min(66, Math.max(18, 18 + plate * 1.8));
+  const size = 32;
   const height = Math.min(92, Math.max(28, 26 + plate * 2.6));
   return {
     "--plate-color": plateColor(plate),
+    "--plate-text-color": plateTextColor(plate),
     "--plate-width": `${size}px`,
     "--plate-height": `${height}px`,
   };
