@@ -1,6 +1,6 @@
 {
-  "name": "Gymbro 5x5",
-  "short_name": "Gymbro",
+  "name": "GymBro",
+  "short_name": "GymBro",
   "description": "Track 5x5 strength workouts and manage exercises.",
   "start_url": "/",
   "scope": "/",
