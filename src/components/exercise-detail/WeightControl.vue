@@ -32,7 +32,14 @@
             <span class="plate-label">{{ plate }}</span>
           </div>
         </div>
-        <div class="barbell-bar"></div>
+        <button
+          class="barbell-bar barbell-button"
+          type="button"
+          aria-label="Edit bar weight"
+          @click="openBarWeight"
+        >
+          <span class="barbell-label">{{ barWeight }} kg</span>
+        </button>
         <div class="plate-stack">
           <div
             v-for="(plate, index) in plateStack"
@@ -84,9 +91,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["adjust"]);
+const emit = defineEmits(["adjust", "edit-bar"]);
 
 const adjust = (delta) => {
   emit("adjust", delta);
+};
+
+const openBarWeight = () => {
+  emit("edit-bar");
 };
 </script>
