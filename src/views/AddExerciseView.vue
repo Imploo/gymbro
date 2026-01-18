@@ -47,6 +47,6 @@ const addCustom = async () => {
 };
 
 onMounted(async () => {
-  await exercises.loadGlobalExercises();
+  await exercises.subscribeGlobalExercises();
 });
 </script>

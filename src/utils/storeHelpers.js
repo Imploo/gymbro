@@ -10,8 +10,13 @@ export const defaultExercise = {
     history: [],
 };
 
-export const normalizeName = (name) => name.trim();
-export const normalizeNameLower = (name) => normalizeName(name).toLowerCase();
+export const trimName = (name) => name.trim();
+export const trimAndLowercase = (name) => trimName(name).toLowerCase();
+
+export const sanitizeName = (name) =>
+    trimName(String(name ?? ""))
+        .replace(/<[^>]*>/g, "")
+        .replace(/\s+/g, " ");
 
 export const buildExerciseId = () =>
     `ex-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -46,6 +51,18 @@ export const readStorage = (key, fallback) => {
 export const writeStorage = (key, value) => {
     if (!isE2E || typeof window === "undefined") return;
     window.localStorage.setItem(key, JSON.stringify(value));
+};
+
+export const clearStorage = (keys) => {
+    if (!isE2E || typeof window === "undefined") return;
+    keys.forEach((key) => window.localStorage.removeItem(key));
+};
+
+export const withPersistence = async ({ e2e, remote }) => {
+    if (isE2E) {
+        return e2e?.();
+    }
+    return remote?.();
 };
 
 export const sortUserExercises = (exercises) =>

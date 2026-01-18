@@ -1,47 +1,41 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { trainingSessionFlow } from "./training-session-flow.js";
+import { sessionWorkoutStrategy } from "./session-workout-strategy.js";
 
-describe("trainingSessionFlow.getActiveUid", () => {
+describe("sessionWorkoutStrategy.getActiveUid", () => {
   it("uses shared session active uid when available", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "partner" } };
+    const sharedSession = { activeUid: "partner" };
 
-    expect(
-      trainingSessionFlow.getActiveUid({ auth, trainingSession })
-    ).toBe("partner");
+    expect(sessionWorkoutStrategy.getActiveUid({ auth, sharedSession })).toBe("partner");
   });
 
   it("falls back to auth user uid without shared session", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
 
-    expect(
-      trainingSessionFlow.getActiveUid({ auth, trainingSession })
-    ).toBe("self");
+    expect(sessionWorkoutStrategy.getActiveUid({ auth, sharedSession })).toBe("self");
   });
 
   it("returns undefined when neither value is available", () => {
     const auth = { user: null };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
 
-    expect(
-      trainingSessionFlow.getActiveUid({ auth, trainingSession })
-    ).toBeUndefined();
+    expect(sessionWorkoutStrategy.getActiveUid({ auth, sharedSession })).toBeUndefined();
   });
 });
 
-describe("trainingSessionFlow.getActiveExercise", () => {
+describe("sessionWorkoutStrategy.getActiveExercise", () => {
   it("returns the local exercise when not in shared session", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getActiveExercise({
+      sessionWorkoutStrategy.getActiveExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -50,14 +44,14 @@ describe("trainingSessionFlow.getActiveExercise", () => {
 
   it("returns the local exercise when active uid matches user", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "self" } };
+    const sharedSession = { activeUid: "self" };
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getActiveExercise({
+      sessionWorkoutStrategy.getActiveExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -66,14 +60,14 @@ describe("trainingSessionFlow.getActiveExercise", () => {
 
   it("returns the partner exercise when active uid is different", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "partner" } };
+    const sharedSession = { activeUid: "partner" };
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getActiveExercise({
+      sessionWorkoutStrategy.getActiveExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -82,14 +76,14 @@ describe("trainingSessionFlow.getActiveExercise", () => {
 
   it("prefers the activeUid argument when provided", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "partner" } };
+    const sharedSession = { activeUid: "partner" };
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getActiveExercise({
+      sessionWorkoutStrategy.getActiveExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
         activeUid: "self",
@@ -98,48 +92,44 @@ describe("trainingSessionFlow.getActiveExercise", () => {
   });
 });
 
-describe("trainingSessionFlow.getActiveTarget", () => {
+describe("sessionWorkoutStrategy.getActiveTarget", () => {
   it("returns the auth user and exercise when not shared", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
     const exercise = { id: "e1" };
 
     expect(
-      trainingSessionFlow.getActiveTarget({ auth, trainingSession, exercise })
+      sessionWorkoutStrategy.getActiveTarget({ auth, sharedSession, exercise })
     ).toEqual({ userId: "self", exerciseId: "e1" });
   });
 
   it("uses the active participant exercise id from the session", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = {
-      sharedSession: {
-        activeUid: "partner",
-        participants: {
-          partner: { exerciseId: "e2" },
-        },
+    const sharedSession = {
+      activeUid: "partner",
+      participants: {
+        partner: { exerciseId: "e2" },
       },
     };
 
     expect(
-      trainingSessionFlow.getActiveTarget({ auth, trainingSession, exercise: null })
+      sessionWorkoutStrategy.getActiveTarget({ auth, sharedSession, exercise: null })
     ).toEqual({ userId: "partner", exerciseId: "e2" });
   });
 
   it("prefers the activeUid argument when provided", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = {
-      sharedSession: {
-        activeUid: "partner",
-        participants: {
-          self: { exerciseId: "e1" },
-        },
+    const sharedSession = {
+      activeUid: "partner",
+      participants: {
+        self: { exerciseId: "e1" },
       },
     };
 
     expect(
-      trainingSessionFlow.getActiveTarget({
+      sessionWorkoutStrategy.getActiveTarget({
         auth,
-        trainingSession,
+        sharedSession,
         exercise: null,
         activeUid: "self",
       })
@@ -147,17 +137,17 @@ describe("trainingSessionFlow.getActiveTarget", () => {
   });
 });
 
-describe("trainingSessionFlow.getTimerSourceExercise", () => {
+describe("sessionWorkoutStrategy.getRestTimerOwnerExercise", () => {
   it("returns the local exercise when not shared", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getTimerSourceExercise({
+      sessionWorkoutStrategy.getRestTimerOwnerExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -166,14 +156,14 @@ describe("trainingSessionFlow.getTimerSourceExercise", () => {
 
   it("returns local exercise when user is primary", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { primaryUid: "self" } };
+    const sharedSession = { primaryUid: "self" };
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getTimerSourceExercise({
+      sessionWorkoutStrategy.getRestTimerOwnerExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -182,14 +172,14 @@ describe("trainingSessionFlow.getTimerSourceExercise", () => {
 
   it("returns partner exercise when user is not primary", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { primaryUid: "partner" } };
+    const sharedSession = { primaryUid: "partner" };
     const exercise = { id: "e1" };
     const partnerExercise = { id: "e2" };
 
     expect(
-      trainingSessionFlow.getTimerSourceExercise({
+      sessionWorkoutStrategy.getRestTimerOwnerExercise({
         auth,
-        trainingSession,
+        sharedSession,
         exercise,
         partnerExercise,
       })
@@ -197,15 +187,15 @@ describe("trainingSessionFlow.getTimerSourceExercise", () => {
   });
 });
 
-describe("trainingSessionFlow.getActiveParticipantLabel", () => {
+describe("sessionWorkoutStrategy.getActiveParticipantLabel", () => {
   it("returns empty string when not shared", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSession = null;
 
     expect(
-      trainingSessionFlow.getActiveParticipantLabel({
+      sessionWorkoutStrategy.getActiveParticipantLabel({
         auth,
-        trainingSession,
+        sharedSession,
         activeUid: "self",
         partnerProfile: null,
       })
@@ -214,12 +204,12 @@ describe("trainingSessionFlow.getActiveParticipantLabel", () => {
 
   it('returns "You" when user is active', () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "self" } };
+    const sharedSession = { activeUid: "self" };
 
     expect(
-      trainingSessionFlow.getActiveParticipantLabel({
+      sessionWorkoutStrategy.getActiveParticipantLabel({
         auth,
-        trainingSession,
+        sharedSession,
         activeUid: "self",
         partnerProfile: { displayName: "Partner" },
       })
@@ -228,12 +218,12 @@ describe("trainingSessionFlow.getActiveParticipantLabel", () => {
 
   it("uses partner display name when available", () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "partner" } };
+    const sharedSession = { activeUid: "partner" };
 
     expect(
-      trainingSessionFlow.getActiveParticipantLabel({
+      sessionWorkoutStrategy.getActiveParticipantLabel({
         auth,
-        trainingSession,
+        sharedSession,
         activeUid: "partner",
         partnerProfile: { displayName: "Taylor" },
       })
@@ -242,12 +232,12 @@ describe("trainingSessionFlow.getActiveParticipantLabel", () => {
 
   it('falls back to "Partner" when name missing', () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: { activeUid: "partner" } };
+    const sharedSession = { activeUid: "partner" };
 
     expect(
-      trainingSessionFlow.getActiveParticipantLabel({
+      sessionWorkoutStrategy.getActiveParticipantLabel({
         auth,
-        trainingSession,
+        sharedSession,
         activeUid: "partner",
         partnerProfile: {},
       })
@@ -255,15 +245,15 @@ describe("trainingSessionFlow.getActiveParticipantLabel", () => {
   });
 });
 
-describe("trainingSessionFlow.completeSet", () => {
+describe("sessionWorkoutStrategy.completeSet", () => {
   it("returns defaults when missing exercise or session", async () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSessionStore = { sharedSession: null };
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercise: null,
         restTimerMs: 0,
       })
@@ -276,13 +266,13 @@ describe("trainingSessionFlow.completeSet", () => {
 
   it("finishes solo exercise when last set is done", async () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSessionStore = { sharedSession: null };
     const exercises = { finishExercise: vi.fn().mockResolvedValue(undefined) };
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercises,
         exercise: {
           id: "e1",
@@ -308,14 +298,14 @@ describe("trainingSessionFlow.completeSet", () => {
 
   it("updates solo exercise and schedules rest when not finished", async () => {
     const auth = { user: { uid: "self" } };
-    const trainingSession = { sharedSession: null };
+    const sharedSessionStore = { sharedSession: null };
     const exercises = { updateExercise: vi.fn().mockResolvedValue(undefined) };
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1000);
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercises,
         exercise: {
           id: "e1",
@@ -344,7 +334,7 @@ describe("trainingSessionFlow.completeSet", () => {
   it("returns navigate true when both partners finish", async () => {
     const auth = { user: { uid: "self" } };
     const session = { id: "session", primaryUid: "self" };
-    const trainingSession = {
+    const sharedSessionStore = {
       sharedSession: session,
       completeSharedSet: vi.fn().mockResolvedValue({
         finished: true,
@@ -353,9 +343,9 @@ describe("trainingSessionFlow.completeSet", () => {
     };
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercise: { id: "e1" },
         restTimerMs: 90000,
       })
@@ -369,7 +359,7 @@ describe("trainingSessionFlow.completeSet", () => {
   it("schedules rest only for primary when session continues", async () => {
     const auth = { user: { uid: "self" } };
     const session = { id: "session", primaryUid: "self" };
-    const trainingSession = {
+    const sharedSessionStore = {
       sharedSession: session,
       completeSharedSet: vi.fn().mockResolvedValue({
         finished: false,
@@ -378,9 +368,9 @@ describe("trainingSessionFlow.completeSet", () => {
     };
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercise: { id: "e1" },
         restTimerMs: 90000,
       })
@@ -394,7 +384,7 @@ describe("trainingSessionFlow.completeSet", () => {
   it("does not schedule rest when user is not primary", async () => {
     const auth = { user: { uid: "self" } };
     const session = { id: "session", primaryUid: "partner" };
-    const trainingSession = {
+    const sharedSessionStore = {
       sharedSession: session,
       completeSharedSet: vi.fn().mockResolvedValue({
         finished: false,
@@ -403,9 +393,9 @@ describe("trainingSessionFlow.completeSet", () => {
     };
 
     await expect(
-      trainingSessionFlow.completeSet({
+      sessionWorkoutStrategy.completeSet({
         auth,
-        trainingSession,
+        sharedSessionStore,
         exercise: { id: "e1" },
         restTimerMs: 90000,
       })
@@ -417,11 +407,11 @@ describe("trainingSessionFlow.completeSet", () => {
   });
 });
 
-describe("trainingSessionFlow.toggleWarmup", () => {
+describe("sessionWorkoutStrategy.toggleWarmup", () => {
   it("no-ops when target is incomplete", async () => {
     const exercises = { updateExerciseByUser: vi.fn() };
 
-    await trainingSessionFlow.toggleWarmup({
+    await sessionWorkoutStrategy.toggleWarmup({
       activeExercise: { warmupEnabled: true },
       exercises,
       target: { userId: null, exerciseId: null },
@@ -433,7 +423,7 @@ describe("trainingSessionFlow.toggleWarmup", () => {
   it("toggles warmup and resets warmup set index", async () => {
     const exercises = { updateExerciseByUser: vi.fn() };
 
-    await trainingSessionFlow.toggleWarmup({
+    await sessionWorkoutStrategy.toggleWarmup({
       activeExercise: { warmupEnabled: true },
       exercises,
       target: { userId: "self", exerciseId: "e1" },
@@ -446,14 +436,14 @@ describe("trainingSessionFlow.toggleWarmup", () => {
   });
 });
 
-describe("trainingSessionFlow.finishExercise", () => {
+describe("sessionWorkoutStrategy.finishExercise", () => {
   it("finishes solo exercise and navigates", async () => {
-    const trainingSession = { sharedSession: null };
+    const sharedSessionStore = { sharedSession: null };
     const exercises = { finishExercise: vi.fn().mockResolvedValue(undefined) };
 
     await expect(
-      trainingSessionFlow.finishExercise({
-        trainingSession,
+      sessionWorkoutStrategy.finishExercise({
+        sharedSessionStore,
         exercise: { id: "e1" },
         exercises,
         sharedSuccess: false,
@@ -465,19 +455,19 @@ describe("trainingSessionFlow.finishExercise", () => {
 
   it("finishes shared session and navigates", async () => {
     const session = { id: "session" };
-    const trainingSession = {
+    const sharedSessionStore = {
       sharedSession: session,
       finishSharedSession: vi.fn().mockResolvedValue(undefined),
     };
 
     await expect(
-      trainingSessionFlow.finishExercise({
-        trainingSession,
+      sessionWorkoutStrategy.finishExercise({
+        sharedSessionStore,
         sharedSuccess: true,
       })
     ).resolves.toEqual({ shouldNavigate: true });
 
-    expect(trainingSession.finishSharedSession).toHaveBeenCalledWith(session, {
+    expect(sharedSessionStore.finishSharedSession).toHaveBeenCalledWith(session, {
       success: true,
     });
   });

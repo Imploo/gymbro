@@ -27,8 +27,11 @@ export const calculatePlates = (totalWeight, barWeight, plateConfig) => {
   };
 };
 
+export const WARMUP_START_PERCENTAGE = 0.5;
+export const WARMUP_INCREMENT_KG = 10;
+
 export const getWarmupWeight = (currentWeight, warmupSetIndex) => {
-  const start = currentWeight / 2;
-  const weight = start + warmupSetIndex * 10;
+  const start = currentWeight * WARMUP_START_PERCENTAGE;
+  const weight = start + warmupSetIndex * WARMUP_INCREMENT_KG;
   return Math.min(weight, currentWeight);
 };

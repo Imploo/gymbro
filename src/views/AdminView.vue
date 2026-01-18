@@ -29,12 +29,12 @@ const exercises = useExercisesStore();
 const globalName = ref("");
 
 const addGlobal = async () => {
-  await exercises.addGlobalExercise(globalName.value.trim());
+  await exercises.addGlobalExercise(globalName.value);
   globalName.value = "";
-  await exercises.loadGlobalExercises();
+  await exercises.subscribeGlobalExercises();
 };
 
 onMounted(async () => {
-  await exercises.loadGlobalExercises();
+  await exercises.subscribeGlobalExercises();
 });
 </script>

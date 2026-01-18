@@ -51,6 +51,26 @@ describe("calculatePlates", () => {
       plates: [],
     });
   });
+
+  it("handles negative total weights gracefully", () => {
+    const result = calculatePlates(-20, 20, [20, 10]);
+
+    expect(result).toEqual({
+      targetPerSide: 0,
+      remaining: 0,
+      plates: [],
+    });
+  });
+
+  it("returns empty plates when no plate config exists", () => {
+    const result = calculatePlates(60, 20, []);
+
+    expect(result).toEqual({
+      targetPerSide: 20,
+      remaining: 20,
+      plates: [],
+    });
+  });
 });
 
 describe("getWarmupWeight", () => {

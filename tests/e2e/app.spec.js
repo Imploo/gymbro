@@ -80,7 +80,7 @@ test("add custom exercise and update settings", async ({ page }) => {
   const numberInputs = page.locator('input[type="number"]');
   await numberInputs.first().fill("25");
   await numberInputs.nth(1).fill("90");
-  await page.getByRole("textbox").fill("20, 10, 5");
+  await page.getByTestId("plate-config-input").fill("20, 10, 5");
   await page.getByRole("button", { name: "Save" }).click();
   await page.getByRole("button", { name: "Enable notifications" }).click();
 

@@ -8,7 +8,7 @@
         class="row partner-item"
       >
         <span>{{ request.requester.displayName || request.requester.email }}</span>
-        <div class="row" style="gap: 8px;">
+        <div class="row gap-8">
           <button class="button" @click="social.acceptFriendRequest(request.id)">
             Accept
           </button>
@@ -34,7 +34,7 @@
           <strong>{{ exercise.name }}</strong>
           <span class="muted">
             {{ exercise.currentWeight }} kg · Sets
-            {{ getDisplaySetsDone(exercise) }}/{{ getDisplaySetsTarget(exercise) }}
+            {{ displaySetsDone(exercise) }}/{{ displaySetsTarget(exercise) }}
           </span>
         </div>
         <span :class="['button', { secondary: !isExerciseActive(exercise) }]">
@@ -52,20 +52,12 @@ import { onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useExercisesStore } from "../stores/exercises";
 import { useSocialStore } from "../stores/social";
+import { useDisplaySets } from "../composables/useDisplaySets";
 
 const exercises = useExercisesStore();
 const social = useSocialStore();
 
-const getDisplaySetsDone = (exercise) => {
-  const setsDone = exercise?.setsDone ?? 0;
-  const setsTarget = exercise?.setsTarget ?? 0;
-  if (exercise?.warmupEnabled) {
-    return setsDone;
-  }
-  return Math.min(setsDone + 1, setsTarget);
-};
-
-const getDisplaySetsTarget = (exercise) => exercise?.setsTarget ?? 0;
+const { displaySetsDone, displaySetsTarget } = useDisplaySets();
 
 const isExerciseActive = (exercise) => Number(exercise.setsDone ?? 0) > 0;
 

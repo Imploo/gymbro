@@ -1,115 +1,35 @@
 <template>
   <div v-if="exercise" class="column">
-    <div class="card column">
-      <div class="row" style="justify-content: space-between;">
-        <h2>{{ exercise.name }}</h2>
-        <div class="row" style="gap: 8px; align-items: center;">
-          <span v-if="activeParticipantLabel" class="badge secondary">
-            {{ activeParticipantLabel }}
-          </span>
-          <span class="badge">{{ displayWeight }} kg</span>
-        </div>
-      </div>
-
-      <div class="row" style="justify-content: space-between;">
-        <button class="button secondary" :disabled="!activeExercise" @click="adjustWeight(-2.5)">
-          -2.5
-        </button>
-        <button class="button" :disabled="!activeExercise" @click="adjustWeight(2.5)">
-          +2.5
-        </button>
-      </div>
-
-      <div class="card column">
-        <strong>Total weight</strong>
-        <div class="barbell-visual">
-          <div class="plate-stack reverse">
-            <div
-              v-for="(plate, index) in plateStack"
-              :key="`left-${plate}-${index}`"
-              class="plate"
-              :style="plateStyle(plate)"
-            >
-              <span class="plate-label">{{ plate }}</span>
-            </div>
-          </div>
-          <div class="barbell-bar"></div>
-          <div class="plate-stack">
-            <div
-              v-for="(plate, index) in plateStack"
-              :key="`right-${plate}-${index}`"
-              class="plate"
-              :style="plateStyle(plate)"
-            >
-              <span class="plate-label">{{ plate }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="row" style="justify-content: space-between;">
-          <span>Bar</span>
-          <span>{{ preferences.barWeight }} kg</span>
-        </div>
-      </div>
-    </div>
+    <WeightControl
+      :exercise-name="exercise.name"
+      :display-weight="displayWeight"
+      :active-participant-label="activeParticipantLabel"
+      :active-exercise="activeExercise"
+      :plate-stack="plateStack"
+      :plate-style="plateStyle"
+      :bar-weight="preferences.barWeight"
+      @adjust="adjustWeight"
+    />
 
     <SessionPartners @add-partner="openPartnerModal" />
 
-    <div class="card column">
-      <div class="row" style="justify-content: space-between;">
-        <strong>Sets</strong>
-        <span class="badge">
-          {{ displaySetsDone }}/{{ displaySetsTarget }}
-        </span>
-      </div>
-      <div class="row" style="justify-content: space-between;">
-        <button class="button" :disabled="!activeExercise" @click="completeSet">
-          Complete set
-        </button>
-        <button
-          :class="['button', activeExercise?.warmupEnabled ? 'danger' : 'secondary']"
-          :disabled="!activeExercise"
-          @click="toggleWarmup"
-        >
-          Warmup
-        </button>
-      </div>
-      <div v-if="activeExercise?.warmupEnabled" class="muted">
-        Warmup set {{ (activeExercise?.warmupSetIndex ?? 0) + 1 }} weight:
-        {{ warmupWeight }} kg
-      </div>
-      <div v-if="timerRemaining > 0" class="muted">
-        Rest timer: {{ Math.ceil(timerRemaining / 1000) }}s
-      </div>
-    </div>
+    <SetTracker
+      :display-sets-done="displaySetsDone"
+      :display-sets-target="displaySetsTarget"
+      :active-exercise="activeExercise"
+      :warmup-weight="warmupWeight"
+      :warmup-set-label="warmupSetLabel"
+      :is-warmup-enabled="isWarmupEnabled"
+      :timer-remaining="timerRemaining"
+      @complete-set="completeSet"
+      @toggle-warmup="toggleWarmup"
+    />
 
     <div class="card column">
       <button class="button danger" @click="finishExercise">Finish exercise</button>
     </div>
 
-    <div class="card column">
-      <div class="row" style="justify-content: space-between; align-items: center;">
-        <strong>History</strong>
-        <button class="link-button danger" @click="removeExercise">
-          Remove from database
-        </button>
-      </div>
-      <div v-if="historyEntries.length === 0" class="muted">No history yet.</div>
-      <div v-else class="column" style="gap: 8px;">
-        <div
-          v-for="entry in historyEntries"
-          :key="entry.key"
-          class="row"
-          style="justify-content: space-between;"
-        >
-          <span>{{ entry.dateLabel }}</span>
-          <span>{{ entry.weight }} kg</span>
-          <span v-if="entry.partnerLabel" class="muted">with {{ entry.partnerLabel }}</span>
-          <span :class="['status-pill', entry.success ? 'status-success' : 'status-missed']">
-            {{ entry.success ? "Success" : "Missed" }}
-          </span>
-        </div>
-      </div>
-    </div>
+    <ExerciseHistory :history-entries="historyEntries" @remove="removeExercise" />
 
     <PartnerModal
       v-if="showPartnerModal"
@@ -126,12 +46,19 @@ import { useRouter } from "vue-router";
 import { useExercisesStore } from "../stores/exercises";
 import { useAuthStore } from "../stores/auth";
 import { useSocialStore } from "../stores/social";
-import { useTrainingSessionStore } from "../stores/training-session";
+import { useSharedSessionStore } from "../stores/shared-session";
+import { usePartnerExerciseStore } from "../stores/partner-exercise";
 import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
+import { getPlateColors } from "../utils/plateColors";
 import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications.js";
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
-import { trainingSessionFlow } from "../stores/strategies/training-session-flow";
+import WeightControl from "../components/exercise-detail/WeightControl.vue";
+import SetTracker from "../components/exercise-detail/SetTracker.vue";
+import ExerciseHistory from "../components/exercise-detail/ExerciseHistory.vue";
+import { sessionWorkoutStrategy } from "../stores/strategies/session-workout-strategy";
+import { usePartnerProfile } from "../composables/usePartnerProfile";
+import { useDisplaySets } from "../composables/useDisplaySets";
 
 const props = defineProps({
   id: {
@@ -144,7 +71,8 @@ const router = useRouter();
 const exercises = useExercisesStore();
 const auth = useAuthStore();
 const social = useSocialStore();
-const trainingSession = useTrainingSessionStore();
+const sharedSessionStore = useSharedSessionStore();
+const partnerExerciseStore = usePartnerExerciseStore();
 
 const timerRemaining = ref(0);
 let timerInterval;
@@ -154,30 +82,25 @@ const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
 );
 
-const trainingStrategy = computed(() => trainingSessionFlow);
+const workoutStrategy = sessionWorkoutStrategy;
+const sharedSession = computed(() => sharedSessionStore.sharedSession);
+const currentUid = computed(() => auth.user?.uid);
 const activeUid = computed(() =>
-  trainingStrategy.value.getActiveUid({ auth, trainingSession })
+  workoutStrategy.getActiveUid({ auth, sharedSession: sharedSession.value })
 );
-const partnerExercise = computed(() => trainingSession.partnerExercise);
+const partnerExercise = computed(() => partnerExerciseStore.partnerExercise);
 
-const activeExercise = computed(() => {
-  return trainingStrategy.value.getActiveExercise({
+const activeExercise = computed(() =>
+  workoutStrategy.getActiveExercise({
     auth,
-    trainingSession,
+    sharedSession: sharedSession.value,
     exercise: exercise.value,
     partnerExercise: partnerExercise.value,
     activeUid: activeUid.value,
-  });
-});
+  })
+);
 
-const partnerProfile = computed(() => {
-  if (!trainingSession.sharedSession?.participants) return null;
-  const entries = Object.entries(trainingSession.sharedSession.participants);
-  const other = entries.find(([uid]) => uid !== auth.user?.uid);
-  if (!other) return null;
-  const [uid, data] = other;
-  return { uid, ...data };
-});
+const partnerProfile = usePartnerProfile(sharedSession, currentUid);
 
 const warmupWeight = computed(() => {
   if (!activeExercise.value) return 0;
@@ -187,16 +110,12 @@ const warmupWeight = computed(() => {
   );
 });
 
-const displaySetsDone = computed(() => {
-  const setsDone = activeExercise.value?.setsDone ?? 0;
-  const setsTarget = activeExercise.value?.setsTarget ?? 0;
-  if (activeExercise.value?.warmupEnabled) {
-    return setsDone;
-  }
-  return Math.min(setsDone + 1, setsTarget);
-});
-
-const displaySetsTarget = computed(() => activeExercise.value?.setsTarget ?? 0);
+const { displaySetsDone: displaySetsDoneFor, displaySetsTarget: displaySetsTargetFor } =
+  useDisplaySets();
+const displaySetsDone = computed(() => displaySetsDoneFor(activeExercise.value));
+const displaySetsTarget = computed(() => displaySetsTargetFor(activeExercise.value));
+const warmupSetLabel = computed(() => (activeExercise.value?.warmupSetIndex ?? 0) + 1);
+const isWarmupEnabled = computed(() => Boolean(activeExercise.value?.warmupEnabled));
 
 const preferences = computed(() => auth.preferences);
 const historyEntries = computed(() => {
@@ -214,16 +133,16 @@ const historyEntries = computed(() => {
 });
 const restTimerMs = computed(() => {
   const restSeconds = Number(
-    trainingSession.sharedSession?.restTimerSeconds ?? preferences.value.restTimerSeconds
+    sharedSessionStore.sharedSession?.restTimerSeconds ?? preferences.value.restTimerSeconds
   );
   if (!Number.isFinite(restSeconds)) return 90_000;
   return Math.max(0, restSeconds) * 1000;
 });
 
-const timerSourceExercise = computed(() =>
-  trainingStrategy.value.getTimerSourceExercise({
+const restTimerOwnerExercise = computed(() =>
+  workoutStrategy.getRestTimerOwnerExercise({
     auth,
-    trainingSession,
+    sharedSession: sharedSession.value,
     exercise: exercise.value,
     partnerExercise: partnerExercise.value,
   })
@@ -256,16 +175,16 @@ const plateStack = computed(() => {
 });
 
 const activeParticipantLabel = computed(() =>
-  trainingStrategy.value.getActiveParticipantLabel({
+  workoutStrategy.getActiveParticipantLabel({
     auth,
-    trainingSession,
+    sharedSession: sharedSession.value,
     activeUid: activeUid.value,
     partnerProfile: partnerProfile.value,
   })
 );
 
 const sharedSuccess = computed(() => {
-  if (!trainingSession.sharedSession) return false;
+  if (!sharedSessionStore.sharedSession) return false;
   const own = exercise.value;
   const partner = partnerExercise.value;
   if (!own || !partner) return false;
@@ -274,16 +193,8 @@ const sharedSuccess = computed(() => {
   );
 });
 
-const plateColors = {
-  20: "#2b64b4",
-  15: "#e2c14b",
-  10: "#2f8b57",
-  5: "#c73b3b",
-  2.5: "#1f1f1f",
-  1.25: "#f5f5f2",
-};
-
-const plateColor = (plate) => plateColors[plate] ?? "#8a6f4a";
+const plateColors = computed(() => getPlateColors(preferences.value));
+const plateColor = (plate) => plateColors.value[plate] ?? "#8a6f4a";
 const plateTextColor = (plate) => (plate === 2.5 ? "#f5f5f2" : "rgba(0, 0, 0, 0.75)");
 
 const plateStyle = (plate) => {
@@ -298,9 +209,9 @@ const plateStyle = (plate) => {
 };
 
 const activeTarget = computed(() =>
-  trainingStrategy.value.getActiveTarget({
+  workoutStrategy.getActiveTarget({
     auth,
-    trainingSession,
+    sharedSession: sharedSession.value,
     exercise: exercise.value,
     activeUid: activeUid.value,
   })
@@ -319,9 +230,9 @@ const adjustWeight = async (delta) => {
 
 const completeSet = async () => {
   if (!exercise.value) return;
-  const result = await trainingStrategy.value.completeSet({
+  const result = await workoutStrategy.completeSet({
     auth,
-    trainingSession,
+    sharedSessionStore,
     exercises,
     exercise: exercise.value,
     restTimerMs: restTimerMs.value,
@@ -336,7 +247,7 @@ const completeSet = async () => {
 
 const toggleWarmup = async () => {
   if (!activeExercise.value) return;
-  await trainingStrategy.value.toggleWarmup({
+  await workoutStrategy.toggleWarmup({
     activeExercise: activeExercise.value,
     exercises,
     target: activeTarget.value,
@@ -345,8 +256,8 @@ const toggleWarmup = async () => {
 
 const finishExercise = async () => {
   if (!exercise.value) return;
-  const result = await trainingStrategy.value.finishExercise({
-    trainingSession,
+  const result = await workoutStrategy.finishExercise({
+    sharedSessionStore,
     exercises,
     exercise: exercise.value,
     sharedSuccess: sharedSuccess.value,
@@ -358,7 +269,7 @@ const finishExercise = async () => {
 
 const removeExercise = async () => {
   if (!exercise.value) return;
-  if (trainingSession.sharedSession?.status === "active") {
+  if (sharedSessionStore.sharedSession?.status === "active") {
     window.alert("Finish the shared session before removing this exercise.");
     return;
   }
@@ -371,14 +282,14 @@ const removeExercise = async () => {
 };
 
 const updateTimerRemaining = () => {
-  if (!timerSourceExercise.value?.timerEndsAt) {
+  if (!restTimerOwnerExercise.value?.timerEndsAt) {
     timerRemaining.value = 0;
     return;
   }
-  const remaining = timerSourceExercise.value.timerEndsAt - Date.now();
+  const remaining = restTimerOwnerExercise.value.timerEndsAt - Date.now();
   timerRemaining.value = Math.max(0, remaining);
   if (remaining <= 0) {
-    if (trainingSession.sharedSession?.primaryUid === auth.user?.uid) {
+    if (sharedSessionStore.sharedSession?.primaryUid === auth.user?.uid) {
       exercises.updateExercise(exercise.value.id, { timerEndsAt: null });
     }
   }
@@ -398,7 +309,7 @@ onMounted(() => {
   exercises.subscribeUserExercises();
   social.loadFriendships();
   if (exercise.value?.sharedSessionId) {
-    trainingSession.subscribeSharedSession(exercise.value.sharedSessionId);
+    sharedSessionStore.subscribeSharedSession(exercise.value.sharedSessionId);
   }
   updateTimerRemaining();
   timerInterval = setInterval(updateTimerRemaining, 1000);
@@ -407,58 +318,58 @@ onMounted(() => {
 onUnmounted(() => {
   cancelRestNotification();
   clearInterval(timerInterval);
-  trainingSession.unsubscribePartnerExercise?.();
-  trainingSession.unsubscribeSharedSession?.();
+  partnerExerciseStore.unsubscribePartnerExercise?.();
+  sharedSessionStore.unsubscribeSharedSession?.();
 });
 
 watch(
   () => exercise.value?.sharedSessionId,
   (sessionId) => {
     if (!sessionId) {
-      trainingSession.unsubscribeSharedSession?.();
-      trainingSession.sharedSession = null;
-      trainingSession.sharedSessionId = null;
+      sharedSessionStore.unsubscribeSharedSession?.();
+      sharedSessionStore.sharedSession = null;
+      sharedSessionStore.sharedSessionId = null;
       return;
     }
-    trainingSession.subscribeSharedSession(sessionId);
+    sharedSessionStore.subscribeSharedSession(sessionId);
   }
 );
 
 watch(
-  () => [trainingSession.sharedSession?.id, exercise.value?.id],
+  () => [sharedSessionStore.sharedSession?.id, exercise.value?.id],
   ([sessionId, exerciseId]) => {
     if (!sessionId || !exerciseId) return;
-    const entry = trainingSession.sharedSession?.participants?.[auth.user?.uid];
+    const entry = sharedSessionStore.sharedSession?.participants?.[auth.user?.uid];
     if (!entry?.exerciseId) {
-      trainingSession.joinSharedSession(sessionId, exercise.value);
+      sharedSessionStore.joinSharedSession(sessionId, exercise.value);
     }
   }
 );
 
 watch(
   () => [
-    trainingSession.sharedSession?.id,
+    sharedSessionStore.sharedSession?.id,
     partnerProfile.value?.uid,
     partnerProfile.value?.exerciseId,
   ],
   ([sessionId, partnerUid, partnerExerciseId]) => {
     if (!sessionId || !partnerUid || !partnerExerciseId) {
-       trainingSession.subscribePartnerExercise(null, null);
-       return;
-    }
-    if (trainingSession.sharedSession?.status === "finished") {
-      trainingSession.subscribePartnerExercise(null, null);
+      partnerExerciseStore.subscribePartnerExercise(null, null);
       return;
     }
-    trainingSession.subscribePartnerExercise(partnerUid, partnerExerciseId);
+    if (sharedSessionStore.sharedSession?.status === "finished") {
+      partnerExerciseStore.subscribePartnerExercise(null, null);
+      return;
+    }
+    partnerExerciseStore.subscribePartnerExercise(partnerUid, partnerExerciseId);
   },
   { immediate: true }
 );
 
 watch(
   () => [
-    trainingSession.sharedSession?.status,
-    trainingSession.sharedSession?.id,
+    sharedSessionStore.sharedSession?.status,
+    sharedSessionStore.sharedSession?.id,
     exercise.value?.sharedSessionId,
   ],
   ([status, sharedSessionId, sessionId]) => {

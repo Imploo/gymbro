@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 
-import { useTrainingSessionStore } from "./training-session";
+import { useSharedSessionStore } from "./shared-session";
 
 const runTransactionMock = vi.fn();
 const docMock = vi.fn();
@@ -33,9 +33,10 @@ vi.mock("./exercises", () => ({
 
 vi.mock("../utils/storeHelpers", () => ({
   isE2E: false,
-  normalizeName: (value) => value,
-  normalizeNameLower: (value) => value,
+  trimName: (value) => value,
+  trimAndLowercase: (value) => value,
   defaultExercise: {},
+  withPersistence: ({ remote }) => remote?.(),
 }));
 
 const buildExercise = (overrides = {}) => ({
@@ -52,7 +53,7 @@ const createSnap = (data) => ({
   data: () => data,
 });
 
-describe("trainingSession.completeSharedSet", () => {
+describe("sharedSession.completeSharedSet", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     runTransactionMock.mockReset();
@@ -99,7 +100,7 @@ describe("trainingSession.completeSharedSet", () => {
       runTransactionMock.updates = updates;
     });
 
-    const store = useTrainingSessionStore();
+    const store = useSharedSessionStore();
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1000);
 
     await store.completeSharedSet(session, { id: "ex-b" });
@@ -161,7 +162,7 @@ describe("trainingSession.completeSharedSet", () => {
       runTransactionMock.updates = updates;
     });
 
-    const store = useTrainingSessionStore();
+    const store = useSharedSessionStore();
 
     await store.completeSharedSet(session, { id: "ex-a" });
 

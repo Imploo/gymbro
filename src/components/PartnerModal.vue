@@ -1,12 +1,12 @@
 <template>
   <div class="modal-backdrop" @click.self="$emit('close')">
     <div class="modal card column">
-      <div class="row" style="justify-content: space-between; align-items: center;">
+      <div class="row space-between align-center">
         <strong>Add training partner</strong>
         <button class="button secondary" @click="$emit('close')">Close</button>
       </div>
 
-      <div class="row" style="gap: 8px; width: 100%;">
+      <div class="row gap-8 full-width">
         <input
           v-model="searchTerm"
           class="input"
@@ -18,12 +18,12 @@
         </button>
       </div>
 
-      <div class="column" style="gap: 8px;">
+      <div class="column gap-8">
         <strong>Friends</strong>
         <div v-if="social.friends.length === 0" class="muted">No friends yet.</div>
         <div v-for="friend in social.friends" :key="friend.uid" class="row partner-item">
           <span>{{ friend.displayName || friend.email }}</span>
-          <div class="row" style="gap: 8px;">
+          <div class="row gap-8">
             <button class="button" @click="startSession(friend)">Add</button>
             <button class="button secondary" @click="social.unlinkFriend(friend.friendshipId)">
               Unlink
@@ -32,11 +32,11 @@
         </div>
       </div>
 
-      <div v-if="social.userSearchResults.length" class="column" style="gap: 8px;">
+      <div v-if="social.userSearchResults.length" class="column gap-8">
         <strong>Search results</strong>
         <div v-for="user in social.userSearchResults" :key="user.uid" class="row partner-item">
           <span>{{ user.displayName || user.email }}</span>
-          <div class="row" style="gap: 8px;">
+          <div class="row gap-8">
             <button
               v-if="friendIds.has(user.uid)"
               class="button"
@@ -57,32 +57,33 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from "vue";
 import { useSocialStore } from "../stores/social";
-import { useTrainingSessionStore } from "../stores/training-session";
+import { useSharedSessionStore } from "../stores/shared-session";
 
 const props = defineProps({
   exercise: {
     type: Object,
     required: true,
+    validator: (value) => Boolean(value?.id && value?.name),
   },
 });
 
 const emit = defineEmits(["close"]);
 
 const social = useSocialStore();
-const trainingSession = useTrainingSessionStore();
+const sharedSessionStore = useSharedSessionStore();
 
 const searchTerm = ref("");
 const friendIds = computed(() => new Set(social.friends.map((friend) => friend.uid)));
-let searchTimer;
+const searchTimer = ref(null);
 
 const search = () => {
   social.searchUsers(searchTerm.value);
 };
 
 const startSession = async (friend) => {
-  const sessionId = await trainingSession.createSharedSession(props.exercise, friend);
+  const sessionId = await sharedSessionStore.createSharedSession(props.exercise, friend);
   if (sessionId) {
-    trainingSession.subscribeSharedSession(sessionId);
+    sharedSessionStore.subscribeSharedSession(sessionId);
     emit("close");
   }
 };
@@ -90,41 +91,23 @@ const startSession = async (friend) => {
 watch(
   () => searchTerm.value,
   (value) => {
-    clearTimeout(searchTimer);
+    if (searchTimer.value) {
+      clearTimeout(searchTimer.value);
+    }
     if (!value.trim()) {
       social.userSearchResults = [];
       return;
     }
-    searchTimer = setTimeout(() => {
+    searchTimer.value = setTimeout(() => {
       social.searchUsers(value);
     }, 250);
   }
 );
 
 onUnmounted(() => {
-  clearTimeout(searchTimer);
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value);
+  }
   social.userSearchResults = []; // Clear results when closed/destroyed
 });
 </script>
-
-<style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(26, 28, 24, 0.65);
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  z-index: 60;
-}
-
-.modal {
-  width: min(520px, 100%);
-  gap: 12px;
-}
-
-.partner-item {
-  justify-content: space-between;
-  width: 100%;
-}
-</style>

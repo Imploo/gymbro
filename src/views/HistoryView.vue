@@ -3,7 +3,7 @@
     <div class="card column">
       <h2>History</h2>
       <div v-if="historyEntries.length === 0" class="muted">No history yet.</div>
-      <div v-else class="column" style="gap: 8px;">
+      <div v-else class="column gap-8">
         <div v-for="entry in historyEntries" :key="entry.key" class="row history-row">
           <div class="column">
             <strong>{{ entry.exerciseName }}</strong>
