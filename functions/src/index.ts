@@ -9,7 +9,7 @@ admin.initializeApp();
 
 const REGION = process.env.FUNCTION_REGION || "europe-west4";
 setGlobalOptions({ region: REGION });
-const TASKS_LOCATION = process.env.CLOUD_TASKS_LOCATION || REGION;
+const TASKS_LOCATION = process.env.CLOUD_TASKS_LOCATION || "europe-west1";
 const TASKS_QUEUE = process.env.CLOUD_TASKS_QUEUE || "rest-notifications";
 const TASKS_SECRET = process.env.CLOUD_TASKS_SECRET || "";
 const TASKS_SERVICE_ACCOUNT = process.env.CLOUD_TASKS_SERVICE_ACCOUNT || "";
