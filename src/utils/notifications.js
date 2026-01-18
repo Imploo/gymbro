@@ -16,6 +16,16 @@ const getVapidKey = () => {
   return key.trim();
 };
 
+const getServiceWorkerRegistration = async () => {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.ready;
+  } catch (error) {
+    console.warn("[notifications] Service worker not ready", error);
+    return null;
+  }
+};
+
 export const registerFcmToken = async ({ userId, shouldPrompt = false }) => {
   if (!userId) return false;
   const permissionGranted = await ensureNotificationPermission(shouldPrompt);
@@ -30,7 +40,16 @@ export const registerFcmToken = async ({ userId, shouldPrompt = false }) => {
     return false;
   }
 
-  const token = await getToken(messaging, { vapidKey });
+  const serviceWorkerRegistration = await getServiceWorkerRegistration();
+  if (!serviceWorkerRegistration) {
+    console.warn("[notifications] No active service worker available.");
+    return false;
+  }
+
+  const token = await getToken(messaging, {
+    vapidKey,
+    serviceWorkerRegistration,
+  });
   if (!token) return false;
 
   await setDoc(
@@ -58,7 +77,12 @@ export const unregisterFcmToken = async ({ userId }) => {
   if (!vapidKey) return;
 
   try {
-    const token = await getToken(messaging, { vapidKey });
+    const serviceWorkerRegistration = await getServiceWorkerRegistration();
+    if (!serviceWorkerRegistration) return;
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration,
+    });
     if (!token) return;
     await deleteToken(messaging);
     await deleteDoc(doc(db, "users", userId, "tokens", token));
