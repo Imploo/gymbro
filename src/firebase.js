@@ -12,6 +12,7 @@ const requiredEnvKeys = [
   "VITE_FIREBASE_STORAGE_BUCKET",
   "VITE_FIREBASE_MESSAGING_SENDER_ID",
   "VITE_FIREBASE_APP_ID",
+  "VITE_FIREBASE_VAPID_KEY",
 ];
 
 const missingEnvKeys = requiredEnvKeys.filter((key) => {

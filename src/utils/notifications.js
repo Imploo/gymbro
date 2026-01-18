@@ -1,44 +1,68 @@
-const ensureNotificationPermission = async () => {
+import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { deleteToken, getToken } from "firebase/messaging";
+import { db, getMessagingIfSupported } from "../firebase";
+
+const ensureNotificationPermission = async (shouldPrompt) => {
   if (!("Notification" in window)) return false;
   if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
+  if (!shouldPrompt || Notification.permission === "denied") return false;
   const result = await Notification.requestPermission();
   return result === "granted";
 };
 
-export const showRestNotification = async () => {
-  if (!("serviceWorker" in navigator)) return;
+const getVapidKey = () => {
+  const key = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+  if (typeof key !== "string") return "";
+  return key.trim();
+};
+
+export const registerFcmToken = async ({ userId, shouldPrompt = false }) => {
+  if (!userId) return false;
+  const permissionGranted = await ensureNotificationPermission(shouldPrompt);
+  if (!permissionGranted) return false;
+
+  const messaging = await getMessagingIfSupported();
+  if (!messaging) return false;
+
+  const vapidKey = getVapidKey();
+  if (!vapidKey) {
+    console.warn("[notifications] Missing VAPID key for FCM.");
+    return false;
+  }
+
+  const token = await getToken(messaging, { vapidKey });
+  if (!token) return false;
+
+  await setDoc(
+    doc(db, "users", userId, "tokens", token),
+    {
+      token,
+      createdAt: serverTimestamp(),
+      platform: "web",
+    },
+    { merge: true }
+  );
+
+  return true;
+};
+
+export const unregisterFcmToken = async ({ userId }) => {
+  if (!userId) return;
+  if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
 
-  const registration = await navigator.serviceWorker.ready;
-  await registration.showNotification("Rest is over", {
-    body: "Time for the next set.",
-    icon: "/icon.svg",
-  });
-};
+  const messaging = await getMessagingIfSupported();
+  if (!messaging) return;
 
-let activeTimerId = null;
+  const vapidKey = getVapidKey();
+  if (!vapidKey) return;
 
-export const cancelRestNotification = () => {
-  if (activeTimerId) {
-    clearTimeout(activeTimerId);
-    activeTimerId = null;
+  try {
+    const token = await getToken(messaging, { vapidKey });
+    if (!token) return;
+    await deleteToken(messaging);
+    await deleteDoc(doc(db, "users", userId, "tokens", token));
+  } catch (error) {
+    console.warn("[notifications] Failed to unregister token", error);
   }
-};
-
-export const scheduleRestNotification = async (delayMs) => {
-  // Cancel any existing timer first
-  cancelRestNotification();
-
-  const granted = await ensureNotificationPermission();
-  if (!granted) return;
-  if (delayMs <= 0) {
-    showRestNotification();
-    return;
-  }
-
-  activeTimerId = setTimeout(() => {
-    showRestNotification();
-    activeTimerId = null;
-  }, delayMs);
 };

@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 importScripts("https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.4/firebase-messaging-compat.js");
+importScripts("/__/firebase/init.js");
 
 const APP_VERSION =
   new URL(self.location).searchParams.get("v") || "dev";
@@ -14,20 +15,16 @@ const BYPASS_CACHE_PATHS = new Set([
   "/icon-512.png",
 ]);
 
-// Optional: only initialize Firebase Messaging if config is provided.
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
-};
-
-const hasConfig = Object.values(firebaseConfig).every(Boolean);
-if (hasConfig) {
-  firebase.initializeApp(firebaseConfig);
-  // Remote notification logic removed to avoid conflicts with local timer notifications
+if (firebase.apps.length) {
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const title = payload?.notification?.title || "Rest is over";
+    const options = {
+      body: payload?.notification?.body || "Time for the next set.",
+      icon: "/icon.svg",
+    };
+    self.registration.showNotification(title, options);
+  });
 }
 
 self.addEventListener("activate", (event) => {
