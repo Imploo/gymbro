@@ -9,35 +9,8 @@
       :plate-style="plateStyle"
       :bar-weight="effectiveBarWeight"
       @adjust="adjustWeight"
+      @edit-bar="openBarWeightModal"
     />
-
-    <div class="card column">
-      <strong>Bar weight</strong>
-      <label class="muted">Override for this exercise (kg)</label>
-      <div class="row gap-8 align-center">
-        <input
-          class="input"
-          type="number"
-          min="0"
-          step="0.5"
-          v-model="barWeightInput"
-          :placeholder="barWeightPlaceholder"
-        />
-        <button
-          class="button secondary"
-          :disabled="!isBarWeightOverride"
-          @click="resetBarWeight"
-        >
-          Use default
-        </button>
-        <button class="button" :disabled="!barWeightDirty" @click="saveBarWeight">
-          Save
-        </button>
-      </div>
-      <p v-if="!isBarWeightOverride" class="muted">
-        Using default: {{ defaultBarWeightLabel }}
-      </p>
-    </div>
 
     <SessionPartners @add-partner="openPartnerModal" />
 
@@ -64,6 +37,18 @@
       :exercise="exercise"
       @close="closePartnerModal"
     />
+
+    <BarWeightModal
+      v-if="showBarWeightModal"
+      v-model="barWeightInput"
+      :placeholder="barWeightPlaceholder"
+      :is-override="isBarWeightOverride"
+      :is-dirty="barWeightDirty"
+      :default-label="defaultBarWeightLabel"
+      @close="closeBarWeightModal"
+      @save="saveBarWeight"
+      @reset="resetBarWeight"
+    />
   </div>
   <div v-else class="card">Loading...</div>
 </template>
@@ -82,6 +67,7 @@ import { scheduleRestNotification, cancelRestNotification } from "../utils/notif
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
 import WeightControl from "../components/exercise-detail/WeightControl.vue";
+import BarWeightModal from "../components/exercise-detail/BarWeightModal.vue";
 import SetTracker from "../components/exercise-detail/SetTracker.vue";
 import ExerciseHistory from "../components/exercise-detail/ExerciseHistory.vue";
 import { sessionWorkoutStrategy } from "../stores/strategies/session-workout-strategy";
@@ -105,6 +91,7 @@ const partnerExerciseStore = usePartnerExerciseStore();
 const timerRemaining = ref(0);
 let timerInterval;
 const showPartnerModal = ref(false);
+const showBarWeightModal = ref(false);
 
 const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
@@ -180,12 +167,13 @@ const defaultBarWeight = computed(
 );
 const defaultBarWeightLabel = computed(() => `${defaultBarWeight.value} kg`);
 const barWeightPlaceholder = computed(() => `${defaultBarWeight.value}`);
+const barWeightOwner = computed(() => activeExercise.value ?? exercise.value);
 const effectiveBarWeight = computed(() => {
-  const custom = normalizeBarWeight(activeExercise.value?.barWeight);
+  const custom = normalizeBarWeight(barWeightOwner.value?.barWeight);
   return custom ?? defaultBarWeight.value;
 });
 const isBarWeightOverride = computed(
-  () => normalizeBarWeight(exercise.value?.barWeight) !== null
+  () => normalizeBarWeight(barWeightOwner.value?.barWeight) !== null
 );
 
 const parseBarWeightInput = (value) => {
@@ -195,7 +183,7 @@ const parseBarWeightInput = (value) => {
 };
 
 const barWeightDirty = computed(() => {
-  const current = normalizeBarWeight(exercise.value?.barWeight);
+  const current = normalizeBarWeight(barWeightOwner.value?.barWeight);
   const next = parseBarWeightInput(barWeightInput.value);
   return current !== next;
 });
@@ -290,14 +278,25 @@ const adjustWeight = async (delta) => {
 };
 
 const saveBarWeight = async () => {
-  if (!exercise.value || !barWeightDirty.value) return;
+  if (!barWeightDirty.value) return;
   const next = parseBarWeightInput(barWeightInput.value);
-  await exercises.updateExercise(exercise.value.id, { barWeight: next });
+  const { userId, exerciseId } = activeTarget.value ?? {};
+  if (!userId || !exerciseId) return;
+  await exercises.updateExerciseByUser(userId, exerciseId, { barWeight: next });
 };
 
 const resetBarWeight = async () => {
-  if (!exercise.value) return;
-  await exercises.updateExercise(exercise.value.id, { barWeight: null });
+  const { userId, exerciseId } = activeTarget.value ?? {};
+  if (!userId || !exerciseId) return;
+  await exercises.updateExerciseByUser(userId, exerciseId, { barWeight: null });
+};
+
+const openBarWeightModal = () => {
+  showBarWeightModal.value = true;
+};
+
+const closeBarWeightModal = () => {
+  showBarWeightModal.value = false;
 };
 
 const completeSet = async () => {
@@ -419,7 +418,7 @@ watch(
 );
 
 watch(
-  () => exercise.value?.barWeight,
+  () => barWeightOwner.value?.barWeight,
   (value) => {
     const normalized = normalizeBarWeight(value);
     barWeightInput.value = normalized === null ? "" : String(normalized);
