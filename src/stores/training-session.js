@@ -257,47 +257,46 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                     }
                 }
 
-                if (!current.warmupEnabled && current.setsDone >= current.setsTarget) return;
-
-                const currentBro = new GymBro({
-                    uid: activeUid,
-                    exerciseData: current,
-                    exerciseRef,
-                });
-                const partnerBro = partnerData
-                    ? new GymBro({
-                        uid: partnerUid,
-                        exerciseData: partnerData,
-                        exerciseRef: partnerExerciseRef,
+                const { current: currentBro, partner: partnerBro } = partnerData
+                    ? GymBro.createPaired({
+                        currentUid: activeUid,
+                        currentData: current,
+                        currentRef: exerciseRef,
+                        partnerUid,
+                        partnerData,
+                        partnerRef: partnerExerciseRef,
                     })
-                    : null;
-                if (partnerBro) {
-                    currentBro.next = partnerBro;
-                    partnerBro.next = currentBro;
-                }
+                    : {
+                        current: GymBro.createSolo({
+                            uid: activeUid,
+                            exerciseData: current,
+                            exerciseRef,
+                        }),
+                        partner: null,
+                    };
 
                 const update = currentBro.performSet();
                 if (!update) return;
-                currentBro.exerciseData = { ...currentBro.exerciseData, ...update };
 
                 let nextBro = currentBro.advance();
-                const activeDone = !currentBro.canDoSet();
-                const partnerDone = partnerBro ? !partnerBro.canDoSet() : false;
-                shouldFinishSession = activeDone && partnerDone;
-                finished = activeDone;
+                finished = !currentBro.canDoSet();
+                shouldFinishSession = !nextBro;
 
                 transaction.update(exerciseRef, update);
 
-                if (restTimerMs > 0 && primaryRef && !shouldFinishSession) {
+                if (
+                    restTimerMs > 0 &&
+                    primaryRef &&
+                    !shouldFinishSession &&
+                    activeUid === sessionData.primaryUid &&
+                    auth.user.uid === sessionData.primaryUid
+                ) {
                     transaction.update(primaryRef, {
                         timerEndsAt: Date.now() + restTimerMs,
                     });
                 }
 
                 if (!shouldFinishSession) {
-                    if (!nextBro) {
-                        nextBro = currentBro;
-                    }
                     transaction.update(sessionRef, {
                         activeUid: nextBro.uid,
                         updatedAt: Date.now(),

@@ -6,6 +6,10 @@ export class GymBro {
     this.next = next;
   }
 
+  get isLinked() {
+    return this.next !== null;
+  }
+
   canDoSet() {
     if (!this.exerciseData) return false;
     if (this.exerciseData.warmupEnabled) return true;
@@ -29,6 +33,7 @@ export class GymBro {
       update.setsDone = nextSetsDone;
     }
 
+    this.exerciseData = { ...this.exerciseData, ...update };
     return update;
   }
 
@@ -37,5 +42,32 @@ export class GymBro {
     if (nextBro?.canDoSet()) return nextBro;
     if (this.canDoSet()) return this;
     return null;
+  }
+
+  static createSolo({ uid, exerciseData, exerciseRef }) {
+    return new GymBro({ uid, exerciseData, exerciseRef, next: null });
+  }
+
+  static createPaired({
+    currentUid,
+    currentData,
+    currentRef,
+    partnerUid,
+    partnerData,
+    partnerRef,
+  }) {
+    const current = new GymBro({
+      uid: currentUid,
+      exerciseData: currentData,
+      exerciseRef: currentRef,
+    });
+    const partner = new GymBro({
+      uid: partnerUid,
+      exerciseData: partnerData,
+      exerciseRef: partnerRef,
+    });
+    current.next = partner;
+    partner.next = current;
+    return { current, partner };
   }
 }

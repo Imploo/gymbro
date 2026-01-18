@@ -51,9 +51,9 @@ test("exercise lifecycle and rest timer", async ({ page }) => {
   await page.getByRole("button", { name: "-2.5" }).click();
   await expect(weightBadge).toHaveText("20 kg");
 
-  await expect(setsBadge).toHaveText("0/5");
-  await page.getByRole("button", { name: "Complete set" }).click();
   await expect(setsBadge).toHaveText("1/5");
+  await page.getByRole("button", { name: "Complete set" }).click();
+  await expect(setsBadge).toHaveText("2/5");
   await expect(page.getByText(/Rest timer:/)).toBeVisible();
 
   await page.getByRole("button", { name: "Warmup" }).click();

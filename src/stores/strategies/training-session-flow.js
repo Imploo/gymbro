@@ -1,6 +1,7 @@
 import { GymBro } from "./gymbro";
+import { toggleWarmupForTarget } from "../../utils/training-helpers";
 
-export const sharedTrainingStrategy = {
+export const trainingSessionFlow = {
   getActiveUid({ auth, trainingSession }) {
     return trainingSession.sharedSession?.activeUid ?? auth.user?.uid;
   },
@@ -36,7 +37,7 @@ export const sharedTrainingStrategy = {
       return { finished: false, shouldNavigate: false, shouldScheduleRest: false };
     }
     if (!session) {
-      const currentBro = new GymBro({
+      const currentBro = GymBro.createSolo({
         uid: auth.user?.uid,
         exerciseData: exercise,
         exerciseRef: null,
@@ -45,7 +46,6 @@ export const sharedTrainingStrategy = {
       if (!update) {
         return { finished: false, shouldNavigate: false, shouldScheduleRest: false };
       }
-      currentBro.exerciseData = { ...currentBro.exerciseData, ...update };
       const nextBro = currentBro.advance();
       const finished = !nextBro;
 
@@ -75,12 +75,7 @@ export const sharedTrainingStrategy = {
     return { finished, shouldNavigate: shouldFinishSession, shouldScheduleRest };
   },
   async toggleWarmup({ activeExercise, exercises, target }) {
-    if (!activeExercise || !target?.userId || !target?.exerciseId) return;
-    const update = {
-      warmupEnabled: !activeExercise.warmupEnabled,
-      warmupSetIndex: 0,
-    };
-    await exercises.updateExerciseByUser(target.userId, target.exerciseId, update);
+    await toggleWarmupForTarget({ activeExercise, exercises, target });
   },
   async finishExercise({ trainingSession, sharedSuccess, exercise, exercises }) {
     if (trainingSession.sharedSession) {

@@ -12,6 +12,7 @@
 ## Data flow
 - Read `users/{uid}/exercises/{exerciseId}`.
 - Update `currentWeight`, `setsDone`, `timerEndsAt`, `warmupEnabled`, `warmupSetIndex`.
+- Delegates solo/shared logic to `trainingSessionFlow` for active exercise + rest timing.
 
 ## Edge cases
 - Weight cannot drop below bar weight.

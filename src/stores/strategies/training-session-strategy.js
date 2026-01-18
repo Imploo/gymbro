@@ -1,3 +1,3 @@
-import { sharedTrainingStrategy } from "./shared-training-strategy";
+import { trainingSessionFlow } from "./training-session-flow";
 
-export const getTrainingStrategy = () => sharedTrainingStrategy;
+export const getTrainingStrategy = () => trainingSessionFlow;
