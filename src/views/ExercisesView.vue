@@ -33,7 +33,8 @@
         <div class="column">
           <strong>{{ exercise.name }}</strong>
           <span class="muted">
-            {{ exercise.currentWeight }} kg · Sets {{ exercise.setsDone }}/{{ exercise.setsTarget }}
+            {{ exercise.currentWeight }} kg · Sets
+            {{ getDisplaySetsDone(exercise) }}/{{ getDisplaySetsTarget(exercise) }}
           </span>
         </div>
         <span :class="['button', { secondary: !isExerciseActive(exercise) }]">
@@ -54,6 +55,17 @@ import { useSocialStore } from "../stores/social";
 
 const exercises = useExercisesStore();
 const social = useSocialStore();
+
+const getDisplaySetsDone = (exercise) => {
+  const setsDone = exercise?.setsDone ?? 0;
+  const setsTarget = exercise?.setsTarget ?? 0;
+  if (exercise?.warmupEnabled) {
+    return setsDone;
+  }
+  return Math.min(setsDone + 1, setsTarget);
+};
+
+const getDisplaySetsTarget = (exercise) => exercise?.setsTarget ?? 0;
 
 const isExerciseActive = (exercise) => Number(exercise.setsDone ?? 0) > 0;
 

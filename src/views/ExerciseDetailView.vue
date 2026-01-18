@@ -58,7 +58,7 @@
       <div class="row" style="justify-content: space-between;">
         <strong>Sets</strong>
         <span class="badge">
-          {{ activeExercise?.setsDone ?? 0 }}/{{ activeExercise?.setsTarget ?? 0 }}
+          {{ displaySetsDone }}/{{ displaySetsTarget }}
         </span>
       </div>
       <div class="row" style="justify-content: space-between;">
@@ -131,6 +131,7 @@ import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
 import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications.js";
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
+import { getTrainingStrategy } from "../stores/strategies/training-session-strategy";
 
 const props = defineProps({
   id: {
@@ -153,13 +154,22 @@ const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
 );
 
-const activeUid = computed(() => trainingSession.sharedSession?.activeUid ?? auth.user?.uid);
+const trainingStrategy = computed(() =>
+  getTrainingStrategy(trainingSession.sharedSession)
+);
+const activeUid = computed(() =>
+  trainingStrategy.value.getActiveUid({ auth, trainingSession })
+);
 const partnerExercise = computed(() => trainingSession.partnerExercise);
 
 const activeExercise = computed(() => {
-  if (!trainingSession.sharedSession) return exercise.value;
-  if (activeUid.value === auth.user?.uid) return exercise.value;
-  return partnerExercise.value;
+  return trainingStrategy.value.getActiveExercise({
+    auth,
+    trainingSession,
+    exercise: exercise.value,
+    partnerExercise: partnerExercise.value,
+    activeUid: activeUid.value,
+  });
 });
 
 const partnerProfile = computed(() => {
@@ -178,6 +188,17 @@ const warmupWeight = computed(() => {
     activeExercise.value.warmupSetIndex
   );
 });
+
+const displaySetsDone = computed(() => {
+  const setsDone = activeExercise.value?.setsDone ?? 0;
+  const setsTarget = activeExercise.value?.setsTarget ?? 0;
+  if (activeExercise.value?.warmupEnabled) {
+    return setsDone;
+  }
+  return Math.min(setsDone + 1, setsTarget);
+});
+
+const displaySetsTarget = computed(() => activeExercise.value?.setsTarget ?? 0);
 
 const preferences = computed(() => auth.preferences);
 const historyEntries = computed(() => {
@@ -201,11 +222,14 @@ const restTimerMs = computed(() => {
   return Math.max(0, restSeconds) * 1000;
 });
 
-const timerSourceExercise = computed(() => {
-  if (!trainingSession.sharedSession) return exercise.value;
-  if (trainingSession.sharedSession.primaryUid === auth.user?.uid) return exercise.value;
-  return partnerExercise.value;
-});
+const timerSourceExercise = computed(() =>
+  trainingStrategy.value.getTimerSourceExercise({
+    auth,
+    trainingSession,
+    exercise: exercise.value,
+    partnerExercise: partnerExercise.value,
+  })
+);
 
 const displayWeight = computed(() => {
   if (!activeExercise.value) return 0;
@@ -233,11 +257,14 @@ const plateStack = computed(() => {
   return stack;
 });
 
-const activeParticipantLabel = computed(() => {
-  if (!trainingSession.sharedSession) return "";
-  if (activeUid.value === auth.user?.uid) return "You";
-  return partnerProfile.value?.displayName || "Partner";
-});
+const activeParticipantLabel = computed(() =>
+  trainingStrategy.value.getActiveParticipantLabel({
+    auth,
+    trainingSession,
+    activeUid: activeUid.value,
+    partnerProfile: partnerProfile.value,
+  })
+);
 
 const sharedSuccess = computed(() => {
   if (!trainingSession.sharedSession) return false;
@@ -272,18 +299,18 @@ const plateStyle = (plate) => {
   };
 };
 
-const getActiveTarget = () => {
-  if (!trainingSession.sharedSession) {
-    return { userId: auth.user?.uid, exerciseId: exercise.value?.id };
-  }
-  const userId = activeUid.value;
-  const exerciseId = trainingSession.sharedSession.participants?.[userId]?.exerciseId;
-  return { userId, exerciseId };
-};
+const activeTarget = computed(() =>
+  trainingStrategy.value.getActiveTarget({
+    auth,
+    trainingSession,
+    exercise: exercise.value,
+    activeUid: activeUid.value,
+  })
+);
 
 const adjustWeight = async (delta) => {
   if (!activeExercise.value) return;
-  const { userId, exerciseId } = getActiveTarget();
+  const { userId, exerciseId } = activeTarget.value ?? {};
   if (!userId || !exerciseId) return;
   const next = Math.max(
     activeExercise.value.currentWeight + delta,
@@ -294,46 +321,41 @@ const adjustWeight = async (delta) => {
 
 const completeSet = async () => {
   if (!exercise.value) return;
-  const currentSession = trainingSession.sharedSession;
-  if (currentSession) {
-    await trainingSession.completeSharedSet(currentSession, exercise.value);
-    if (restTimerMs.value > 0 && currentSession.primaryUid === auth.user?.uid) {
-      scheduleRestNotification(restTimerMs.value);
-    }
-    return;
-  }
-  const finished = await exercises.completeSet(exercise.value);
-  if (finished) {
-    router.push("/exercises");
-    return;
-  }
-  if (restTimerMs.value > 0) {
+  const result = await trainingStrategy.value.completeSet({
+    auth,
+    trainingSession,
+    exercises,
+    exercise: exercise.value,
+    restTimerMs: restTimerMs.value,
+  });
+  if (result.shouldScheduleRest) {
     scheduleRestNotification(restTimerMs.value);
+  }
+  if (result.shouldNavigate) {
+    router.push("/exercises");
   }
 };
 
 const toggleWarmup = async () => {
   if (!activeExercise.value) return;
-  const { userId, exerciseId } = getActiveTarget();
-  if (!userId || !exerciseId) return;
-  const update = {
-    warmupEnabled: !activeExercise.value.warmupEnabled,
-    warmupSetIndex: 0,
-  };
-  await exercises.updateExerciseByUser(userId, exerciseId, update);
+  await trainingStrategy.value.toggleWarmup({
+    activeExercise: activeExercise.value,
+    exercises,
+    target: activeTarget.value,
+  });
 };
 
 const finishExercise = async () => {
   if (!exercise.value) return;
-  if (trainingSession.sharedSession) {
-    await trainingSession.finishSharedSession(trainingSession.sharedSession, {
-      success: sharedSuccess.value,
-    });
+  const result = await trainingStrategy.value.finishExercise({
+    trainingSession,
+    exercises,
+    exercise: exercise.value,
+    sharedSuccess: sharedSuccess.value,
+  });
+  if (result.shouldNavigate) {
     router.push("/exercises");
-    return;
   }
-  await exercises.finishExercise(exercise.value, { success: false });
-  router.push("/exercises");
 };
 
 const removeExercise = async () => {
@@ -436,11 +458,19 @@ watch(
 );
 
 watch(
-  () => [trainingSession.sharedSession?.status, exercise.value?.sharedSessionId],
-  ([status, sessionId]) => {
-    if (status === "finished" && sessionId) {
-      exercises.updateExercise(exercise.value.id, { sharedSessionId: null });
-      router.push("/exercises");
+  () => [
+    trainingSession.sharedSession?.status,
+    trainingSession.sharedSession?.id,
+    exercise.value?.sharedSessionId,
+  ],
+  ([status, sharedSessionId, sessionId]) => {
+    if (status === "finished") {
+      if (sessionId) {
+        exercises.updateExercise(exercise.value.id, { sharedSessionId: null });
+      }
+      if (sharedSessionId) {
+        router.push("/exercises");
+      }
     }
   }
 );

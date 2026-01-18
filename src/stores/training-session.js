@@ -19,6 +19,7 @@ import {
     normalizeNameLower,
     defaultExercise,
 } from "../utils/storeHelpers";
+import { GymBro } from "./strategies/gymbro";
 
 export const useTrainingSessionStore = defineStore("trainingSession", {
     state: () => ({
@@ -207,7 +208,9 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
         },
         async completeSharedSet(session, exercise) {
             const auth = useAuthStore();
-            if (!auth.user || isE2E || !session?.id || !exercise) return false;
+            if (!auth.user || isE2E || !session?.id || !exercise) {
+                return { finished: false, shouldFinishSession: false };
+            }
             const sessionRef = doc(db, "sharedSessions", session.id);
             const primaryExerciseId = session.participants?.[session.primaryUid]?.exerciseId;
             const primaryRef = primaryExerciseId
@@ -235,7 +238,8 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                 if (!activeExerciseId) return;
                 const exerciseRef = doc(db, "users", activeUid, "exercises", activeExerciseId);
 
-                const partnerUid = sessionData.participantIds.find((id) => id !== activeUid);
+                const participantIds = sessionData.participantIds ?? [];
+                const partnerUid = participantIds.find((id) => id !== activeUid);
                 const partnerExerciseId = sessionData.participants?.[partnerUid]?.exerciseId;
                 const partnerExerciseRef = partnerExerciseId
                     ? doc(db, "users", partnerUid, "exercises", partnerExerciseId)
@@ -255,30 +259,32 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
 
                 if (!current.warmupEnabled && current.setsDone >= current.setsTarget) return;
 
-                const update = {};
-                if (current.warmupEnabled) {
-                    update.warmupSetIndex = current.warmupSetIndex + 1;
-                    const warmupWeight = current.currentWeight / 2 + update.warmupSetIndex * 10;
-                    if (warmupWeight >= current.currentWeight) {
-                        update.warmupEnabled = false;
-                    }
-                } else {
-                    const nextSetsDone = current.setsDone + 1;
-                    update.setsDone = Math.min(nextSetsDone, current.setsTarget);
-                    if (nextSetsDone >= current.setsTarget) {
-                        finished = true;
-                    }
+                const currentBro = new GymBro({
+                    uid: activeUid,
+                    exerciseData: current,
+                    exerciseRef,
+                });
+                const partnerBro = partnerData
+                    ? new GymBro({
+                        uid: partnerUid,
+                        exerciseData: partnerData,
+                        exerciseRef: partnerExerciseRef,
+                    })
+                    : null;
+                if (partnerBro) {
+                    currentBro.next = partnerBro;
+                    partnerBro.next = currentBro;
                 }
 
-                const nextWarmupEnabled =
-                    update.warmupEnabled !== undefined ? update.warmupEnabled : current.warmupEnabled;
-                const nextSetsDone = update.setsDone ?? current.setsDone;
-                const nextSetsTarget = current.setsTarget ?? 0;
-                const activeDone = !nextWarmupEnabled && nextSetsDone >= nextSetsTarget;
-                const partnerDone = partnerData
-                    ? !partnerData.warmupEnabled && partnerData.setsDone >= partnerData.setsTarget
-                    : false;
+                const update = currentBro.performSet();
+                if (!update) return;
+                currentBro.exerciseData = { ...currentBro.exerciseData, ...update };
+
+                let nextBro = currentBro.advance();
+                const activeDone = !currentBro.canDoSet();
+                const partnerDone = partnerBro ? !partnerBro.canDoSet() : false;
                 shouldFinishSession = activeDone && partnerDone;
+                finished = activeDone;
 
                 transaction.update(exerciseRef, update);
 
@@ -289,12 +295,11 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                 }
 
                 if (!shouldFinishSession) {
-                    const [first, second] = sessionData.participantIds;
-                    const otherUid = sessionData.activeUid === first ? second : first;
-                    const otherExerciseId = sessionData.participants?.[otherUid]?.exerciseId;
-                    const nextActive = otherExerciseId ? otherUid : sessionData.activeUid;
+                    if (!nextBro) {
+                        nextBro = currentBro;
+                    }
                     transaction.update(sessionRef, {
-                        activeUid: nextActive,
+                        activeUid: nextBro.uid,
                         updatedAt: Date.now(),
                         lastSetBy: activeUid,
                         lastSetAt: Date.now(),
@@ -305,7 +310,7 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
             if (shouldFinishSession) {
                 await this.finishSharedSession(session, { success: true });
             }
-            return finished;
+            return { finished, shouldFinishSession };
         },
         async finishSharedSession(session, { success = false } = {}) {
             const auth = useAuthStore();
@@ -358,6 +363,7 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                         warmupSetIndex: 0,
                         lastCompletedAt: now,
                         timerEndsAt: null,
+                        sharedSessionId: null,
                     });
                 }
 
@@ -368,14 +374,19 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                 });
             });
 
-            const ownExerciseId = session.participants?.[auth.user.uid]?.exerciseId;
-            if (ownExerciseId) {
-                await exercises.updateExerciseByUser(auth.user.uid, ownExerciseId, {
-                    sharedSessionId: null,
-                });
+            const participants = session.participantIds ?? [];
+            const cleanupUpdates = participants
+                .map((participantId) => {
+                    const exerciseId = session.participants?.[participantId]?.exerciseId;
+                    if (!exerciseId) return null;
+                    return exercises.updateExerciseByUser(participantId, exerciseId, {
+                        sharedSessionId: null,
+                    });
+                })
+                .filter(Boolean);
+            if (cleanupUpdates.length > 0) {
+                await Promise.allSettled(cleanupUpdates);
             }
-            this.sharedSession = null;
-            this.sharedSessionId = null;
         },
     },
 });
