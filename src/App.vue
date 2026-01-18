@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <header class="topbar">
-      <RouterLink class="topbar-title" to="/exercises">Gymbro</RouterLink>
+      <RouterLink class="topbar-title" to="/exercises">GymBro</RouterLink>
       <div class="menu">
         <button
           class="menu-button"

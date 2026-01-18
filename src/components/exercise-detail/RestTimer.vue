@@ -1,6 +1,9 @@
 <template>
-  <div v-if="timerRemaining > 0" class="muted">
-    Rest timer: {{ Math.ceil(timerRemaining / 1000) }}s
+  <div class="muted">
+    <span v-if="timerRemaining > 0">
+      Rest timer: {{ Math.ceil(timerRemaining / 1000) }}s
+    </span>
+    <span v-else>No rest</span>
   </div>
 </template>
 

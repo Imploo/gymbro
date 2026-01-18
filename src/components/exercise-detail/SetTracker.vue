@@ -10,13 +10,19 @@
       </button>
       <WarmupControl
         :active-exercise="activeExercise"
-        :warmup-weight="warmupWeight"
-        :warmup-set-label="warmupSetLabel"
         :is-warmup-enabled="isWarmupEnabled"
         @toggle="$emit('toggle-warmup')"
       />
     </div>
-    <RestTimer :timer-remaining="timerRemaining" />
+    <div class="row space-between align-center">
+      <RestTimer :timer-remaining="timerRemaining" />
+      <div class="muted">
+        <span v-if="isWarmupEnabled">
+          Warmup set {{ warmupSetLabel }} weight: {{ warmupWeight }} kg
+        </span>
+        <span v-else>No warmup</span>
+      </div>
+    </div>
   </div>
 </template>
 

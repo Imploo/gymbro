@@ -1,15 +1,15 @@
 <template>
-  <div class="column gap-8">
-    <button
-      :class="['button', isWarmupEnabled ? 'danger' : 'secondary']"
-      :disabled="!activeExercise"
-      @click="$emit('toggle')"
-    >
-      Warmup
-    </button>
-    <div v-if="isWarmupEnabled" class="muted">
-      Warmup set {{ warmupSetLabel }} weight: {{ warmupWeight }} kg
-    </div>
+  <div class="column">
+    <label class="toggle">
+      <input
+        type="checkbox"
+        :checked="isWarmupEnabled"
+        :disabled="!activeExercise"
+        @change="$emit('toggle')"
+      />
+      <span class="toggle-control"></span>
+      <span class="toggle-label">Warmup</span>
+    </label>
   </div>
 </template>
 
@@ -18,14 +18,6 @@ const props = defineProps({
   activeExercise: {
     type: Object,
     default: null,
-  },
-  warmupWeight: {
-    type: Number,
-    required: true,
-  },
-  warmupSetLabel: {
-    type: Number,
-    required: true,
   },
   isWarmupEnabled: {
     type: Boolean,
