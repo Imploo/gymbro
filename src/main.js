@@ -14,6 +14,7 @@ import AdminView from "./views/AdminView.vue";
 import "./styles.css";
 import { useAuthStore } from "./stores/auth";
 import { registerServiceWorker } from "./registerServiceWorker";
+import { initForegroundNotifications } from "./utils/notifications";
 
 const routes = [
   { path: "/", redirect: "/exercises" },
@@ -54,3 +55,4 @@ app.use(router);
 app.mount("#app");
 
 registerServiceWorker();
+initForegroundNotifications();

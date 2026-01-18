@@ -1,5 +1,5 @@
 import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { deleteToken, getToken } from "firebase/messaging";
+import { deleteToken, getToken, onMessage } from "firebase/messaging";
 import { db, getMessagingIfSupported } from "../firebase";
 
 const ensureNotificationPermission = async (shouldPrompt) => {
@@ -24,6 +24,25 @@ const getServiceWorkerRegistration = async () => {
     console.warn("[notifications] Service worker not ready", error);
     return null;
   }
+};
+
+export const initForegroundNotifications = async () => {
+  const messaging = await getMessagingIfSupported();
+  if (!messaging) return;
+
+  onMessage(messaging, async (payload) => {
+    if (!("serviceWorker" in navigator)) return;
+    if (Notification.permission !== "granted") return;
+    const registration = await getServiceWorkerRegistration();
+    if (!registration) return;
+
+    const title = payload?.notification?.title || "Rest is over";
+    const options = {
+      body: payload?.notification?.body || "Time for the next set.",
+      icon: "/icon.svg",
+    };
+    await registration.showNotification(title, options);
+  });
 };
 
 export const registerFcmToken = async ({ userId, shouldPrompt = false }) => {
