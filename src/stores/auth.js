@@ -8,6 +8,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "../firebase";
 import { DEFAULT_PLATE_COLORS } from "../utils/plateColors";
+import { registerFcmToken, unregisterFcmToken } from "../utils/notifications";
 import { clearStorage, readStorage, withPersistence, writeStorage } from "../utils/storeHelpers";
 
 const defaultPreferences = {
@@ -48,6 +49,19 @@ export const useAuthStore = defineStore("auth", {
     }),
   },
   actions: {
+    async syncNotificationToken({ shouldPrompt = false } = {}) {
+      if (!this.user) return false;
+      const enabled = this.preferences.notificationsEnabled;
+      if (!enabled && !shouldPrompt) return false;
+      const registered = await registerFcmToken({
+        userId: this.user.uid,
+        shouldPrompt: shouldPrompt || enabled,
+      });
+      if (shouldPrompt && registered !== enabled) {
+        await this.updatePreferences({ notificationsEnabled: registered });
+      }
+      return registered;
+    },
     async init() {
       if (this.initialized) return;
       this.loading = true;
@@ -109,6 +123,7 @@ export const useAuthStore = defineStore("auth", {
             } else {
               this.profile = snap.data();
             }
+            await this.syncNotificationToken();
           } catch (error) {
             console.error("[auth] Failed to load user profile", error);
             window.alert("We could not load your profile. Try again shortly.");
@@ -154,6 +169,9 @@ export const useAuthStore = defineStore("auth", {
           clearStorage([storageKeys.user, storageKeys.profile]);
         },
         remote: async () => {
+          if (this.user) {
+            await unregisterFcmToken({ userId: this.user.uid });
+          }
           await firebaseSignOut(auth);
           this.user = null;
           this.profile = null;
@@ -196,8 +214,7 @@ export const useAuthStore = defineStore("auth", {
         },
         remote: async () => {
           try {
-            const permission = await Notification.requestPermission();
-            const enabled = permission === "granted";
+            const enabled = await this.syncNotificationToken({ shouldPrompt: true });
             await this.updatePreferences({ notificationsEnabled: enabled });
           } catch (error) {
             console.error("[auth] Notifications permission failed", error);

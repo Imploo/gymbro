@@ -63,7 +63,6 @@ import { useSharedSessionStore } from "../stores/shared-session";
 import { usePartnerExerciseStore } from "../stores/partner-exercise";
 import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
 import { getPlateColors } from "../utils/plateColors";
-import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications.js";
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
 import WeightControl from "../components/exercise-detail/WeightControl.vue";
@@ -306,9 +305,6 @@ const completeSet = async () => {
     exercise: exercise.value,
     restTimerMs: restTimerMs.value,
   });
-  if (result.shouldScheduleRest) {
-    scheduleRestNotification(restTimerMs.value);
-  }
   if (result.shouldNavigate) {
     router.push("/exercises");
   }
@@ -385,7 +381,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  cancelRestNotification();
   clearInterval(timerInterval);
   partnerExerciseStore.unsubscribePartnerExercise?.();
   sharedSessionStore.unsubscribeSharedSession?.();
