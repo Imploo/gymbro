@@ -131,7 +131,7 @@ import { calculatePlates, getWarmupWeight } from "../utils/plateCalculator";
 import { scheduleRestNotification, cancelRestNotification } from "../utils/notifications.js";
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
-import { getTrainingStrategy } from "../stores/strategies/training-session-strategy";
+import { trainingSessionFlow } from "../stores/strategies/training-session-flow";
 
 const props = defineProps({
   id: {
@@ -154,9 +154,7 @@ const exercise = computed(() =>
   exercises.userExercises.find((item) => item.id === props.id)
 );
 
-const trainingStrategy = computed(() =>
-  getTrainingStrategy(trainingSession.sharedSession)
-);
+const trainingStrategy = computed(() => trainingSessionFlow);
 const activeUid = computed(() =>
   trainingStrategy.value.getActiveUid({ auth, trainingSession })
 );

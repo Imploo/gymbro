@@ -60,6 +60,7 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
                 participantIds: [auth.user.uid, partner.uid],
                 primaryUid: auth.user.uid,
                 activeUid: auth.user.uid,
+                roundStartUid: auth.user.uid,
                 exerciseName,
                 restTimerSeconds: Number(auth.preferences.restTimerSeconds) || 0,
                 participants: {
@@ -284,21 +285,25 @@ export const useTrainingSessionStore = defineStore("trainingSession", {
 
                 transaction.update(exerciseRef, update);
 
-                if (
-                    restTimerMs > 0 &&
-                    primaryRef &&
-                    !shouldFinishSession &&
-                    activeUid === sessionData.primaryUid &&
-                    auth.user.uid === sessionData.primaryUid
-                ) {
+                const roundStartUid =
+                    sessionData.roundStartUid ?? sessionData.activeUid ?? activeUid;
+                const isRoundComplete = nextBro && nextBro.uid === roundStartUid;
+                const shouldUpdateRoundStart =
+                    !currentBro.canDoSet() && activeUid === roundStartUid && nextBro;
+
+                if (restTimerMs > 0 && primaryRef && !shouldFinishSession && isRoundComplete) {
                     transaction.update(primaryRef, {
                         timerEndsAt: Date.now() + restTimerMs,
                     });
                 }
 
                 if (!shouldFinishSession) {
+                    const newRoundStartUid = shouldUpdateRoundStart
+                        ? nextBro.uid
+                        : roundStartUid;
                     transaction.update(sessionRef, {
                         activeUid: nextBro.uid,
+                        roundStartUid: newRoundStartUid,
                         updatedAt: Date.now(),
                         lastSetBy: activeUid,
                         lastSetAt: Date.now(),

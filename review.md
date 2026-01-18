@@ -31,7 +31,7 @@ This means the strategy pattern adds unnecessary complexity. The "strategy" is a
 
 The decision about solo vs shared flow happens in 4 different places:
 
-1. `getTrainingStrategy()` — always returns `sharedTrainingStrategy`
+1. `trainingSessionFlow` usage in the view (no strategy indirection)
 2. Inside each strategy method — `if (!trainingSession.sharedSession)` checks
 3. `completeSharedSet` in the store — only called for shared sessions
 4. `soloTrainingStrategy` — exists but is never used (dead code)
