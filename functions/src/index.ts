@@ -1,10 +1,14 @@
 import * as admin from "firebase-admin";
-import * as functions from "firebase-functions";
+import { setGlobalOptions } from "firebase-functions/v2";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onRequest } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import { CloudTasksClient } from "@google-cloud/tasks";
 
 admin.initializeApp();
 
 const REGION = process.env.FUNCTION_REGION || "europe-west4";
+setGlobalOptions({ region: REGION });
 const TASKS_LOCATION = process.env.CLOUD_TASKS_LOCATION || REGION;
 const TASKS_QUEUE = process.env.CLOUD_TASKS_QUEUE || "rest-notifications";
 const TASKS_SECRET = process.env.CLOUD_TASKS_SECRET || "";
@@ -41,17 +45,16 @@ const cancelTaskIfExists = async (taskName?: string | null) => {
   } catch (error) {
     const code = (error as { code?: number })?.code;
     if (code !== 5) {
-      console.warn("[notifications] Failed to delete task", error);
+      logger.warn("[notifications] Failed to delete task", error);
     }
   }
 };
 
-export const onExerciseTimerWrite = functions
-  .region(REGION)
-  .firestore.document("users/{uid}/exercises/{exerciseId}")
-  .onWrite(async (change, context) => {
-    const before = change.before.exists ? change.before.data() : null;
-    const after = change.after.exists ? change.after.data() : null;
+export const onExerciseTimerWrite = onDocumentWritten(
+  "users/{uid}/exercises/{exerciseId}",
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
 
     const beforeTimer = before?.timerEndsAt ?? null;
     const afterTimer = after?.timerEndsAt ?? null;
@@ -62,7 +65,7 @@ export const onExerciseTimerWrite = functions
       return null;
     }
 
-    if (!after) {
+    if (!after || !event.data?.after?.exists) {
       await cancelTaskIfExists(beforeTaskName);
       return null;
     }
@@ -70,7 +73,7 @@ export const onExerciseTimerWrite = functions
     if (typeof afterTimer !== "number") {
       if (beforeTaskName) {
         await cancelTaskIfExists(beforeTaskName);
-        await change.after.ref.update({
+        await event.data.after.ref.update({
           scheduledNotificationTaskName: admin.firestore.FieldValue.delete(),
         });
       }
@@ -80,7 +83,7 @@ export const onExerciseTimerWrite = functions
     if (afterTimer <= Date.now()) {
       if (beforeTaskName) {
         await cancelTaskIfExists(beforeTaskName);
-        await change.after.ref.update({
+        await event.data.after.ref.update({
           scheduledNotificationTaskName: admin.firestore.FieldValue.delete(),
         });
       }
@@ -93,19 +96,19 @@ export const onExerciseTimerWrite = functions
 
     const parent = getTaskParent();
     if (!parent) {
-      console.error("[notifications] Missing project id for Cloud Tasks.");
+      logger.error("[notifications] Missing project id for Cloud Tasks.");
       return null;
     }
 
     const taskId = buildTaskId({
-      uid: context.params.uid,
-      exerciseId: context.params.exerciseId,
+      uid: event.params.uid,
+      exerciseId: event.params.exerciseId,
       timerEndsAt: afterTimer,
     });
     const taskName = getTaskName(taskId);
     const payload = {
-      uid: context.params.uid,
-      exerciseId: context.params.exerciseId,
+      uid: event.params.uid,
+      exerciseId: event.params.exerciseId,
       timerEndsAt: afterTimer,
     };
     const url = `https://${REGION}-${getProjectId()}.cloudfunctions.net/sendRestNotification`;
@@ -130,16 +133,15 @@ export const onExerciseTimerWrite = functions
     };
 
     const [response] = await tasksClient.createTask({ parent, task });
-    await change.after.ref.update({
+    await event.data.after.ref.update({
       scheduledNotificationTaskName: response.name,
     });
 
     return null;
-  });
+  }
+);
 
-export const sendRestNotification = functions
-  .region(REGION)
-  .https.onRequest(async (req, res) => {
+export const sendRestNotification = onRequest(async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).send("Method not allowed");
       return;
@@ -199,4 +201,5 @@ export const sendRestNotification = functions
       failures: response.failureCount,
       invalidTokens: invalidTokens.length,
     });
-  });
+  }
+);
