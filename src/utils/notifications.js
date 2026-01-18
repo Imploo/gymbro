@@ -36,9 +36,9 @@ export const initForegroundNotifications = async () => {
     const registration = await getServiceWorkerRegistration();
     if (!registration) return;
 
-    const title = payload?.notification?.title || "Rest is over";
+    const title = payload?.data?.title || payload?.notification?.title || "Rest is over";
     const options = {
-      body: payload?.notification?.body || "Time for the next set.",
+      body: payload?.data?.body || payload?.notification?.body || "Time for the next set.",
       icon: "/icon.svg",
     };
     await registration.showNotification(title, options);

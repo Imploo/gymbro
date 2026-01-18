@@ -18,9 +18,9 @@ const BYPASS_CACHE_PATHS = new Set([
 if (firebase.apps.length) {
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage((payload) => {
-    const title = payload?.notification?.title || "Rest is over";
+    const title = payload?.data?.title || payload?.notification?.title || "Rest is over";
     const options = {
-      body: payload?.notification?.body || "Time for the next set.",
+      body: payload?.data?.body || payload?.notification?.body || "Time for the next set.",
       icon: "/icon.svg",
     };
     self.registration.showNotification(title, options);
