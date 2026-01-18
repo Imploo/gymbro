@@ -92,7 +92,8 @@ test("add custom exercise and update settings", async ({ page }) => {
 
   await page.goto("/exercises");
   await page.getByRole("link", { name: /Cable Row/ }).click();
-  await expect(page.getByText("25 kg")).toBeVisible();
+  const exerciseHeader = page.getByRole("heading", { name: "Cable Row" }).locator("..");
+  await expect(exerciseHeader.getByText("25 kg")).toBeVisible();
 });
 
 test("admin can manage global exercises", async ({ context, page }) => {
