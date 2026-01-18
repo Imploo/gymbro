@@ -7,9 +7,37 @@
       :active-exercise="activeExercise"
       :plate-stack="plateStack"
       :plate-style="plateStyle"
-      :bar-weight="preferences.barWeight"
+      :bar-weight="effectiveBarWeight"
       @adjust="adjustWeight"
     />
+
+    <div class="card column">
+      <strong>Bar weight</strong>
+      <label class="muted">Override for this exercise (kg)</label>
+      <div class="row gap-8 align-center">
+        <input
+          class="input"
+          type="number"
+          min="0"
+          step="0.5"
+          v-model="barWeightInput"
+          :placeholder="barWeightPlaceholder"
+        />
+        <button
+          class="button secondary"
+          :disabled="!isBarWeightOverride"
+          @click="resetBarWeight"
+        >
+          Use default
+        </button>
+        <button class="button" :disabled="!barWeightDirty" @click="saveBarWeight">
+          Save
+        </button>
+      </div>
+      <p v-if="!isBarWeightOverride" class="muted">
+        Using default: {{ defaultBarWeightLabel }}
+      </p>
+    </div>
 
     <SessionPartners @add-partner="openPartnerModal" />
 
@@ -118,6 +146,7 @@ const warmupSetLabel = computed(() => (activeExercise.value?.warmupSetIndex ?? 0
 const isWarmupEnabled = computed(() => Boolean(activeExercise.value?.warmupEnabled));
 
 const preferences = computed(() => auth.preferences);
+const barWeightInput = ref("");
 const historyEntries = computed(() => {
   if (!exercise.value?.history) return [];
   return [...exercise.value.history]
@@ -137,6 +166,38 @@ const restTimerMs = computed(() => {
   );
   if (!Number.isFinite(restSeconds)) return 90_000;
   return Math.max(0, restSeconds) * 1000;
+});
+
+const normalizeBarWeight = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0) return null;
+  return parsed;
+};
+
+const defaultBarWeight = computed(
+  () => normalizeBarWeight(preferences.value.barWeight) ?? 0
+);
+const defaultBarWeightLabel = computed(() => `${defaultBarWeight.value} kg`);
+const barWeightPlaceholder = computed(() => `${defaultBarWeight.value}`);
+const effectiveBarWeight = computed(() => {
+  const custom = normalizeBarWeight(activeExercise.value?.barWeight);
+  return custom ?? defaultBarWeight.value;
+});
+const isBarWeightOverride = computed(
+  () => normalizeBarWeight(exercise.value?.barWeight) !== null
+);
+
+const parseBarWeightInput = (value) => {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return null;
+  return normalizeBarWeight(trimmed);
+};
+
+const barWeightDirty = computed(() => {
+  const current = normalizeBarWeight(exercise.value?.barWeight);
+  const next = parseBarWeightInput(barWeightInput.value);
+  return current !== next;
 });
 
 const restTimerOwnerExercise = computed(() =>
@@ -159,7 +220,7 @@ const plateBreakdown = computed(() => {
   if (!exercise.value) return { plates: [], remaining: 0 };
   return calculatePlates(
     displayWeight.value,
-    preferences.value.barWeight,
+    effectiveBarWeight.value,
     preferences.value.plateConfig
   );
 });
@@ -223,9 +284,20 @@ const adjustWeight = async (delta) => {
   if (!userId || !exerciseId) return;
   const next = Math.max(
     activeExercise.value.currentWeight + delta,
-    preferences.value.barWeight
+    effectiveBarWeight.value
   );
   await exercises.updateExerciseByUser(userId, exerciseId, { currentWeight: next });
+};
+
+const saveBarWeight = async () => {
+  if (!exercise.value || !barWeightDirty.value) return;
+  const next = parseBarWeightInput(barWeightInput.value);
+  await exercises.updateExercise(exercise.value.id, { barWeight: next });
+};
+
+const resetBarWeight = async () => {
+  if (!exercise.value) return;
+  await exercises.updateExercise(exercise.value.id, { barWeight: null });
 };
 
 const completeSet = async () => {
@@ -344,6 +416,15 @@ watch(
       sharedSessionStore.joinSharedSession(sessionId, exercise.value);
     }
   }
+);
+
+watch(
+  () => exercise.value?.barWeight,
+  (value) => {
+    const normalized = normalizeBarWeight(value);
+    barWeightInput.value = normalized === null ? "" : String(normalized);
+  },
+  { immediate: true }
 );
 
 watch(
