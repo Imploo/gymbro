@@ -39,10 +39,11 @@ test("exercise lifecycle and rest timer", async ({ page }) => {
   const weightBadge = page.locator(".badge").first();
   const setsBadge = page.locator(".badge").nth(1);
   const warmupText = page.getByText(/Warmup set/);
+  const warmupToggle = page.getByText("Warmup", { exact: true });
 
   // Warmup is enabled by default, turn it off to check working weight
   await expect(warmupText).toBeVisible();
-  await page.getByRole("button", { name: "Warmup" }).click();
+  await warmupToggle.click();
   await expect(warmupText).toBeHidden();
 
   await expect(weightBadge).toHaveText("20 kg");
@@ -56,7 +57,7 @@ test("exercise lifecycle and rest timer", async ({ page }) => {
   await expect(setsBadge).toHaveText("2/5");
   await expect(page.getByText(/Rest timer:/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Warmup" }).click();
+  await warmupToggle.click();
   await expect(warmupText).toBeVisible();
 
   await page.getByRole("button", { name: "Finish exercise" }).click();
@@ -91,7 +92,7 @@ test("add custom exercise and update settings", async ({ page }) => {
 
   await page.goto("/exercises");
   await page.getByRole("link", { name: /Cable Row/ }).click();
-  await expect(page.getByText("25 kg")).toBeVisible();
+  await expect(page.getByText("Using default: 25 kg")).toBeVisible();
 });
 
 test("admin can manage global exercises", async ({ context, page }) => {

@@ -17,9 +17,10 @@ describe("SetTracker", () => {
       },
     });
 
-    const buttons = wrapper.findAll("button");
-    await buttons[0].trigger("click");
-    await buttons[1].trigger("click");
+    const completeButton = wrapper.get("button");
+    const warmupToggle = wrapper.get('input[type="checkbox"]');
+    await completeButton.trigger("click");
+    await warmupToggle.setValue(false);
 
     expect(wrapper.emitted("complete-set")).toHaveLength(1);
     expect(wrapper.emitted("toggle-warmup")).toHaveLength(1);
