@@ -38,42 +38,17 @@
       @close="closePartnerModal"
     />
 
-    <div
+    <BarWeightModal
       v-if="showBarWeightModal"
-      class="modal-backdrop"
-      @click.self="closeBarWeightModal"
-    >
-      <div class="modal card column">
-        <div class="row space-between align-center">
-          <strong>Bar weight</strong>
-          <button class="button secondary" @click="closeBarWeightModal">Close</button>
-        </div>
-        <label class="muted">Override for this exercise (kg)</label>
-        <div class="row gap-8 align-center">
-          <input
-            class="input"
-            type="number"
-            min="0"
-            step="0.5"
-            v-model="barWeightInput"
-            :placeholder="barWeightPlaceholder"
-          />
-          <button
-            class="button secondary"
-            :disabled="!isBarWeightOverride"
-            @click="resetBarWeight"
-          >
-            Use default
-          </button>
-          <button class="button" :disabled="!barWeightDirty" @click="saveBarWeight">
-            Save
-          </button>
-        </div>
-        <p v-if="!isBarWeightOverride" class="muted">
-          Using default: {{ defaultBarWeightLabel }}
-        </p>
-      </div>
-    </div>
+      v-model="barWeightInput"
+      :placeholder="barWeightPlaceholder"
+      :is-override="isBarWeightOverride"
+      :is-dirty="barWeightDirty"
+      :default-label="defaultBarWeightLabel"
+      @close="closeBarWeightModal"
+      @save="saveBarWeight"
+      @reset="resetBarWeight"
+    />
   </div>
   <div v-else class="card">Loading...</div>
 </template>
@@ -92,6 +67,7 @@ import { scheduleRestNotification, cancelRestNotification } from "../utils/notif
 import SessionPartners from "../components/SessionPartners.vue";
 import PartnerModal from "../components/PartnerModal.vue";
 import WeightControl from "../components/exercise-detail/WeightControl.vue";
+import BarWeightModal from "../components/exercise-detail/BarWeightModal.vue";
 import SetTracker from "../components/exercise-detail/SetTracker.vue";
 import ExerciseHistory from "../components/exercise-detail/ExerciseHistory.vue";
 import { sessionWorkoutStrategy } from "../stores/strategies/session-workout-strategy";
