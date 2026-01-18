@@ -92,6 +92,7 @@ test("add custom exercise and update settings", async ({ page }) => {
 
   await page.goto("/exercises");
   await page.getByRole("link", { name: /Cable Row/ }).click();
+  await page.getByRole("button", { name: "Edit bar weight" }).click();
   await expect(page.getByText("Using default: 25 kg")).toBeVisible();
 });
 
