@@ -199,9 +199,7 @@ const restTimerOwnerExercise = computed(() =>
 
 const displayWeight = computed(() => {
   if (!activeExercise.value) return 0;
-  return activeExercise.value.warmupEnabled
-    ? warmupWeight.value
-    : activeExercise.value.currentWeight;
+  return activeExercise.value.currentWeight;
 });
 
 const plateBreakdown = computed(() => {
