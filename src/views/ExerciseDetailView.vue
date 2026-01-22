@@ -201,10 +201,15 @@ const displayWeight = computed(() => {
   return activeExercise.value.currentWeight;
 });
 
+const plateWeight = computed(() => {
+  if (!activeExercise.value) return 0;
+  return isWarmupEnabled.value ? warmupWeight.value : displayWeight.value;
+});
+
 const plateBreakdown = computed(() => {
   if (!exercise.value) return { plates: [], remaining: 0 };
   return calculatePlates(
-    displayWeight.value,
+    plateWeight.value,
     effectiveBarWeight.value,
     preferences.value.plateConfig
   );
@@ -353,11 +358,6 @@ const updateTimerRemaining = () => {
   }
   const remaining = restTimerOwnerExercise.value.timerEndsAt - Date.now();
   timerRemaining.value = Math.max(0, remaining);
-  if (remaining <= 0) {
-    if (sharedSessionStore.sharedSession?.primaryUid === auth.user?.uid) {
-      exercises.updateExercise(exercise.value.id, { timerEndsAt: null });
-    }
-  }
 };
 
 const openPartnerModal = () => {
