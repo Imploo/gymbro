@@ -358,11 +358,6 @@ const updateTimerRemaining = () => {
   }
   const remaining = restTimerOwnerExercise.value.timerEndsAt - Date.now();
   timerRemaining.value = Math.max(0, remaining);
-  if (remaining <= 0) {
-    if (sharedSessionStore.sharedSession?.primaryUid === auth.user?.uid) {
-      exercises.updateExercise(exercise.value.id, { timerEndsAt: null });
-    }
-  }
 };
 
 const openPartnerModal = () => {

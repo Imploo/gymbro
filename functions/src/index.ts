@@ -170,11 +170,27 @@ export const sendRestNotification = onRequest(async (req, res) => {
       return;
     }
 
+    const title = "Rest is over";
+    const body = "Time for the next set.";
     const response = await admin.messaging().sendEachForMulticast({
       tokens,
+      notification: {
+        title,
+        body,
+      },
       data: {
-        title: "Rest is over",
-        body: "Time for the next set.",
+        title,
+        body,
+      },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        notification: {
+          title,
+          body,
+          icon: "/icon.svg",
+        },
       },
     });
 
