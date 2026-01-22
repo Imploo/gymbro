@@ -371,7 +371,7 @@ export const useSharedSessionStore = defineStore("sharedSession", {
 
           transaction.update(entry.exerciseRef, {
             history: arrayUnion(historyEntry),
-            currentWeight: entry.exerciseData.currentWeight + 2.5,
+            currentWeight: entry.exerciseData.currentWeight + (success ? 2.5 : 0),
             setsDone: 0,
             warmupEnabled: true,
             warmupSetIndex: 0,

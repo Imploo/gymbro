@@ -92,7 +92,7 @@ export class SessionWorkoutStrategy {
       return { shouldNavigate: true };
     }
     if (!exercise) return { shouldNavigate: false };
-    await exercises.finishExercise(exercise, { success: false });
+    await exercises.finishExercise(exercise, { success: false, addWeight: false });
     return { shouldNavigate: true };
   }
 }

@@ -450,7 +450,10 @@ describe("sessionWorkoutStrategy.finishExercise", () => {
       })
     ).resolves.toEqual({ shouldNavigate: true });
 
-    expect(exercises.finishExercise).toHaveBeenCalledWith({ id: "e1" }, { success: false });
+    expect(exercises.finishExercise).toHaveBeenCalledWith(
+      { id: "e1" },
+      { success: false, addWeight: false }
+    );
   });
 
   it("finishes shared session and navigates", async () => {
